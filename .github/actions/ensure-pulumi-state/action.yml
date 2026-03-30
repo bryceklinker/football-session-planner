@@ -1,0 +1,54 @@
+name: Ensure Pulumi State Storage
+description: Idempotently creates the Azure Storage Account used for Pulumi state
+
+inputs:
+  client_id:
+    description: Azure service principal client ID
+    required: true
+  client_secret:
+    description: Azure service principal client secret
+    required: true
+  tenant_id:
+    description: Azure tenant ID
+    required: true
+  subscription_id:
+    description: Azure subscription ID
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Azure Login
+      uses: azure/login@v2
+      with:
+        client-id: ${{ inputs.client_id }}
+        client-secret: ${{ inputs.client_secret }}
+        tenant-id: ${{ inputs.tenant_id }}
+        subscription-id: ${{ inputs.subscription_id }}
+
+    - name: Ensure Pulumi state storage account exists
+      shell: bash
+      run: |
+        RESOURCE_GROUP="pulumi-state-rg"
+        STORAGE_ACCOUNT="pulumistatestore"
+        CONTAINER="pulumi-state"
+        # Inherit AZURE_LOCATION from the calling workflow env; fall back to centralus
+        LOCATION="${AZURE_LOCATION:-centralus}"
+
+        az group create \
+          --name "$RESOURCE_GROUP" \
+          --location "$LOCATION" \
+          --output none || true
+
+        az storage account create \
+          --name "$STORAGE_ACCOUNT" \
+          --resource-group "$RESOURCE_GROUP" \
+          --location "$LOCATION" \
+          --sku Standard_LRS \
+          --output none || true
+
+        az storage container create \
+          --name "$CONTAINER" \
+          --account-name "$STORAGE_ACCOUNT" \
+          --auth-mode login \
+          --output none || true

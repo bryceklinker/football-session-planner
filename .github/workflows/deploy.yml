@@ -1,0 +1,76 @@
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+env:
+  AZURE_LOCATION: centralus
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Ensure Pulumi state storage
+        uses: ./.github/actions/ensure-pulumi-state
+        with:
+          client_id: ${{ secrets.ARM_CLIENT_ID }}
+          client_secret: ${{ secrets.ARM_CLIENT_SECRET }}
+          tenant_id: ${{ secrets.ARM_TENANT_ID }}
+          subscription_id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+      - name: Pulumi Up
+        uses: pulumi/actions@v6
+        with:
+          command: up
+          stack-name: prod
+          work-dir: infra
+          backend-url: azblob://pulumi-state?storage_account=pulumistatestore
+        env:
+          PULUMI_ACCESS_TOKEN: ""
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+      - name: Get SWA deploy token from Pulumi output
+        id: swa-token
+        working-directory: infra
+        run: |
+          TOKEN=$(pulumi stack output StaticWebAppDeployToken --show-secrets \
+            --stack prod \
+            --non-interactive \
+            --backend-url azblob://pulumi-state?storage_account=pulumistatestore)
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+        env:
+          ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
+          ARM_CLIENT_SECRET: ${{ secrets.ARM_CLIENT_SECRET }}
+          ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
+          ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+      - name: Publish API
+        run: dotnet publish src/FootballPlanner.Api --configuration Release --output ./publish/api
+
+      - name: Publish Web
+        run: dotnet publish src/FootballPlanner.Web --configuration Release --output ./publish/web
+
+      - name: Deploy to Azure Static Web Apps
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ steps.swa-token.outputs.token }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: ./publish/web
+          api_location: ./publish/api
+          skip_app_build: true

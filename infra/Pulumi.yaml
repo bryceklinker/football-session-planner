@@ -1,0 +1,3 @@
+name: football-planner
+runtime: dotnet
+description: Football Session Planner infrastructure

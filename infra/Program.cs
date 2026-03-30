@@ -1,2 +1,4 @@
-﻿// See https://aka.ms/new-console-template for more information
-Console.WriteLine("Hello, World!");
+using FootballPlanner.Infra;
+using Pulumi;
+
+return await Deployment.RunAsync<FootballPlannerStack>();

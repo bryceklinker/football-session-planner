@@ -22,4 +22,9 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\FootballPlanner.Application\FootballPlanner.Application.csproj" />
+    <ProjectReference Include="..\..\src\FootballPlanner.Infrastructure\FootballPlanner.Infrastructure.csproj" />
+  </ItemGroup>
+
 </Project>

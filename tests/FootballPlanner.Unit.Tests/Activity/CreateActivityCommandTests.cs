@@ -39,4 +39,22 @@ public class CreateActivityCommandTests
         await Assert.ThrowsAsync<FluentValidation.ValidationException>(
             () => mediator.Send(new CreateActivityCommand("Name", "Description", null, 0)));
     }
+
+    [Fact]
+    public async Task Send_ThrowsValidationException_WhenDescriptionIsEmpty()
+    {
+        var mediator = TestServiceProvider.CreateMediator();
+
+        await Assert.ThrowsAsync<FluentValidation.ValidationException>(
+            () => mediator.Send(new CreateActivityCommand("Name", "", null, 10)));
+    }
+
+    [Fact]
+    public async Task Send_ThrowsValidationException_WhenEstimatedDurationIsNegative()
+    {
+        var mediator = TestServiceProvider.CreateMediator();
+
+        await Assert.ThrowsAsync<FluentValidation.ValidationException>(
+            () => mediator.Send(new CreateActivityCommand("Name", "Description", null, -1)));
+    }
 }

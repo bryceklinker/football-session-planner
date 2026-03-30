@@ -1,0 +1,15 @@
+/Users/bryce.klinker/code/personal/football-session-planner/infra/bin/Debug/net10.0/FootballPlanner.Infra
+/Users/bryce.klinker/code/personal/football-session-planner/infra/bin/Debug/net10.0/FootballPlanner.Infra.deps.json
+/Users/bryce.klinker/code/personal/football-session-planner/infra/bin/Debug/net10.0/FootballPlanner.Infra.runtimeconfig.json
+/Users/bryce.klinker/code/personal/football-session-planner/infra/bin/Debug/net10.0/FootballPlanner.Infra.dll
+/Users/bryce.klinker/code/personal/football-session-planner/infra/bin/Debug/net10.0/FootballPlanner.Infra.pdb
+/Users/bryce.klinker/code/personal/football-session-planner/infra/obj/Debug/net10.0/FootballPlanner.Infra.GeneratedMSBuildEditorConfig.editorconfig
+/Users/bryce.klinker/code/personal/football-session-planner/infra/obj/Debug/net10.0/FootballPlanner.Infra.AssemblyInfoInputs.cache
+/Users/bryce.klinker/code/personal/football-session-planner/infra/obj/Debug/net10.0/FootballPlanner.Infra.AssemblyInfo.cs
+/Users/bryce.klinker/code/personal/football-session-planner/infra/obj/Debug/net10.0/FootballPlanner.Infra.csproj.CoreCompileInputs.cache
+/Users/bryce.klinker/code/personal/football-session-planner/infra/obj/Debug/net10.0/FootballPlanner.Infra.sourcelink.json
+/Users/bryce.klinker/code/personal/football-session-planner/infra/obj/Debug/net10.0/FootballPlanner.Infra.dll
+/Users/bryce.klinker/code/personal/football-session-planner/infra/obj/Debug/net10.0/refint/FootballPlanner.Infra.dll
+/Users/bryce.klinker/code/personal/football-session-planner/infra/obj/Debug/net10.0/FootballPlanner.Infra.pdb
+/Users/bryce.klinker/code/personal/football-session-planner/infra/obj/Debug/net10.0/FootballPlanner.Infra.genruntimeconfig.cache
+/Users/bryce.klinker/code/personal/football-session-planner/infra/obj/Debug/net10.0/ref/FootballPlanner.Infra.dll

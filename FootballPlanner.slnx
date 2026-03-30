@@ -1,0 +1,17 @@
+<Solution>
+  <Folder Name="/infra/">
+    <Project Path="infra/FootballPlanner.Infra.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/FootballPlanner.Api/FootballPlanner.Api.csproj" />
+    <Project Path="src/FootballPlanner.Application/FootballPlanner.Application.csproj" />
+    <Project Path="src/FootballPlanner.Domain/FootballPlanner.Domain.csproj" />
+    <Project Path="src/FootballPlanner.Infrastructure/FootballPlanner.Infrastructure.csproj" />
+    <Project Path="src/FootballPlanner.Web/FootballPlanner.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FootballPlanner.Feature.Tests/FootballPlanner.Feature.Tests.csproj" />
+    <Project Path="tests/FootballPlanner.Integration.Tests/FootballPlanner.Integration.Tests.csproj" />
+    <Project Path="tests/FootballPlanner.Unit.Tests/FootballPlanner.Unit.Tests.csproj" />
+  </Folder>
+</Solution>

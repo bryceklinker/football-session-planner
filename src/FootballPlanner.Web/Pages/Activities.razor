@@ -1,0 +1,130 @@
+@page "/activities"
+@inject Services.ApiClient Api
+
+<h1>Activity Library</h1>
+
+@if (editingId == null)
+{
+    <div>
+        <input @bind="newName" placeholder="Name" />
+        <textarea @bind="newDescription" placeholder="Description"></textarea>
+        <input @bind="newInspirationUrl" placeholder="Inspiration URL (optional)" />
+        <input @bind="newEstimatedDuration" type="number" placeholder="Duration (mins)" />
+        <button @onclick="AddActivity">Add</button>
+    </div>
+
+    @if (activities == null)
+    {
+        <p>Loading...</p>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Duration</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var activity in activities)
+                {
+                    <tr>
+                        <td>@activity.Name</td>
+                        <td>@activity.Description</td>
+                        <td>@activity.EstimatedDuration min</td>
+                        <td>
+                            <button @onclick="() => StartEdit(activity)">Edit</button>
+                            <button @onclick="() => DeleteActivity(activity.Id)">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+else
+{
+    <h2>Edit Activity</h2>
+    <input @bind="editName" placeholder="Name" />
+    <textarea @bind="editDescription" placeholder="Description"></textarea>
+    <input @bind="editInspirationUrl" placeholder="Inspiration URL (optional)" />
+    <input @bind="editEstimatedDuration" type="number" placeholder="Duration (mins)" />
+    <button @onclick="SaveEdit">Save</button>
+    <button @onclick="CancelEdit">Cancel</button>
+}
+
+@code {
+    private List<Services.ApiClient.ActivityDto>? activities;
+
+    // Create form state
+    private string newName = string.Empty;
+    private string newDescription = string.Empty;
+    private string newInspirationUrl = string.Empty;
+    private int newEstimatedDuration = 30;
+
+    // Edit form state
+    private int? editingId;
+    private string editName = string.Empty;
+    private string editDescription = string.Empty;
+    private string editInspirationUrl = string.Empty;
+    private int editEstimatedDuration = 30;
+
+    protected override async Task OnInitializedAsync()
+    {
+        activities = await Api.GetActivitiesAsync();
+    }
+
+    private async Task AddActivity()
+    {
+        if (string.IsNullOrWhiteSpace(newName)) return;
+        await Api.CreateActivityAsync(new Services.ApiClient.CreateActivityRequest(
+            newName,
+            newDescription,
+            string.IsNullOrWhiteSpace(newInspirationUrl) ? null : newInspirationUrl,
+            newEstimatedDuration));
+        activities = await Api.GetActivitiesAsync();
+        newName = string.Empty;
+        newDescription = string.Empty;
+        newInspirationUrl = string.Empty;
+        newEstimatedDuration = 30;
+    }
+
+    private void StartEdit(Services.ApiClient.ActivityDto activity)
+    {
+        editingId = activity.Id;
+        editName = activity.Name;
+        editDescription = activity.Description;
+        editInspirationUrl = activity.InspirationUrl ?? string.Empty;
+        editEstimatedDuration = activity.EstimatedDuration;
+    }
+
+    private async Task SaveEdit()
+    {
+        if (editingId == null || string.IsNullOrWhiteSpace(editName)) return;
+        await Api.UpdateActivityAsync(editingId.Value, new Services.ApiClient.UpdateActivityRequest(
+            editName,
+            editDescription,
+            string.IsNullOrWhiteSpace(editInspirationUrl) ? null : editInspirationUrl,
+            editEstimatedDuration));
+        activities = await Api.GetActivitiesAsync();
+        CancelEdit();
+    }
+
+    private void CancelEdit()
+    {
+        editingId = null;
+        editName = string.Empty;
+        editDescription = string.Empty;
+        editInspirationUrl = string.Empty;
+        editEstimatedDuration = 30;
+    }
+
+    private async Task DeleteActivity(int id)
+    {
+        await Api.DeleteActivityAsync(id);
+        activities = await Api.GetActivitiesAsync();
+    }
+}

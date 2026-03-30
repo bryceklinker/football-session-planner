@@ -1,0 +1,61 @@
+@page "/phases"
+@inject Services.ApiClient Api
+
+<h1>Phases</h1>
+
+<div>
+    <input @bind="newPhaseName" placeholder="Phase name" />
+    <input @bind="newPhaseOrder" type="number" placeholder="Order" />
+    <button @onclick="AddPhase">Add</button>
+</div>
+
+@if (phases == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr><th>Order</th><th>Name</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var phase in phases.OrderBy(p => p.Order))
+            {
+                <tr>
+                    <td>@phase.Order</td>
+                    <td>@phase.Name</td>
+                    <td>
+                        <button @onclick="() => DeletePhase(phase.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Services.ApiClient.PhaseDto>? phases;
+    private string newPhaseName = string.Empty;
+    private int newPhaseOrder = 1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        phases = await Api.GetPhasesAsync();
+    }
+
+    private async Task AddPhase()
+    {
+        if (string.IsNullOrWhiteSpace(newPhaseName)) return;
+        await Api.CreatePhaseAsync(new Services.ApiClient.CreatePhaseRequest(newPhaseName, newPhaseOrder));
+        phases = await Api.GetPhasesAsync();
+        newPhaseName = string.Empty;
+        newPhaseOrder = 1;
+    }
+
+    private async Task DeletePhase(int id)
+    {
+        await Api.DeletePhaseAsync(id);
+        phases = await Api.GetPhasesAsync();
+    }
+}

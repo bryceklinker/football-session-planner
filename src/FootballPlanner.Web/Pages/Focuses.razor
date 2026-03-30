@@ -1,0 +1,57 @@
+@page "/focuses"
+@inject Services.ApiClient Api
+
+<h1>Focuses</h1>
+
+<div>
+    <input @bind="newFocusName" placeholder="Focus name" />
+    <button @onclick="AddFocus">Add</button>
+</div>
+
+@if (focuses == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table>
+        <thead>
+            <tr><th>Name</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var focus in focuses)
+            {
+                <tr>
+                    <td>@focus.Name</td>
+                    <td>
+                        <button @onclick="() => DeleteFocus(focus.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Services.ApiClient.FocusDto>? focuses;
+    private string newFocusName = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        focuses = await Api.GetFocusesAsync();
+    }
+
+    private async Task AddFocus()
+    {
+        if (string.IsNullOrWhiteSpace(newFocusName)) return;
+        await Api.CreateFocusAsync(new Services.ApiClient.CreateFocusRequest(newFocusName));
+        focuses = await Api.GetFocusesAsync();
+        newFocusName = string.Empty;
+    }
+
+    private async Task DeleteFocus(int id)
+    {
+        await Api.DeleteFocusAsync(id);
+        focuses = await Api.GetFocusesAsync();
+    }
+}

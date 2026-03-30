@@ -32,8 +32,8 @@ runs:
         RESOURCE_GROUP="pulumi-state-rg"
         STORAGE_ACCOUNT="pulumistatestore"
         CONTAINER="pulumi-state"
-        # Inherit AZURE_LOCATION from the calling workflow env; fall back to centralus
-        LOCATION="${AZURE_LOCATION:-centralus}"
+        # AZURE_LOCATION must be set by the calling workflow (centralus default lives in FootballPlannerStack.cs only)
+        LOCATION="${AZURE_LOCATION:?AZURE_LOCATION must be set by the calling workflow}"
 
         az group create \
           --name "$RESOURCE_GROUP" \

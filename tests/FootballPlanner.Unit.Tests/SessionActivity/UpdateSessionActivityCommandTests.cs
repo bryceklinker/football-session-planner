@@ -40,4 +40,20 @@ public class UpdateSessionActivityCommandTests
         await Assert.ThrowsAsync<KeyNotFoundException>(
             () => mediator.Send(new UpdateSessionActivityCommand(99999, phase.Id, focus.Id, 10, null)));
     }
+
+    [Fact]
+    public async Task Send_ThrowsValidationException_WhenDurationIsZero()
+    {
+        var mediator = TestServiceProvider.CreateMediator();
+        var session = await mediator.Send(new CreateSessionCommand(DateTime.UtcNow, "Test", null));
+        var activity = await mediator.Send(new CreateActivityCommand("Rondo", "Desc", null, 10));
+        var phase = await mediator.Send(new CreatePhaseCommand("Warm Up", 1));
+        var focus = await mediator.Send(new CreateFocusCommand("Possession"));
+
+        var sa = await mediator.Send(
+            new AddSessionActivityCommand(session.Id, activity.Id, phase.Id, focus.Id, 15, null));
+
+        await Assert.ThrowsAsync<FluentValidation.ValidationException>(
+            () => mediator.Send(new UpdateSessionActivityCommand(sa.Id, phase.Id, focus.Id, 0, null)));
+    }
 }

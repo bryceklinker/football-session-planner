@@ -7,6 +7,7 @@ public class UpdateSessionActivityKeyPointsCommandValidator : AbstractValidator<
     public UpdateSessionActivityKeyPointsCommandValidator()
     {
         RuleFor(x => x.SessionActivityId).GreaterThan(0);
+        RuleFor(x => x.KeyPoints).NotNull();
         RuleForEach(x => x.KeyPoints).NotEmpty().MaximumLength(500);
     }
 }

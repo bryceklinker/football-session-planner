@@ -1,0 +1,123 @@
+@page "/sessions"
+@inject Services.ApiClient Api
+@inject NavigationManager Nav
+
+<h1>Sessions</h1>
+
+@if (editingId == null)
+{
+    <div>
+        <input @bind="newDate" type="date" />
+        <input @bind="newTitle" placeholder="Title" />
+        <textarea @bind="newNotes" placeholder="Notes (optional)"></textarea>
+        <button @onclick="AddSession">Add Session</button>
+    </div>
+
+    @if (sessions == null)
+    {
+        <p>Loading...</p>
+    }
+    else
+    {
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Title</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var session in sessions)
+                {
+                    <tr>
+                        <td>@session.Date.ToString("yyyy-MM-dd")</td>
+                        <td>@session.Title</td>
+                        <td>
+                            <button @onclick="() => NavigateToSession(session.Id)">Edit</button>
+                            <button @onclick="() => StartEdit(session)">Rename</button>
+                            <button @onclick="() => DeleteSession(session.Id)">Delete</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+else
+{
+    <h2>Edit Session</h2>
+    <input @bind="editDate" type="date" />
+    <input @bind="editTitle" placeholder="Title" />
+    <textarea @bind="editNotes" placeholder="Notes (optional)"></textarea>
+    <button @onclick="SaveEdit">Save</button>
+    <button @onclick="CancelEdit">Cancel</button>
+}
+
+@code {
+    private List<Services.ApiClient.SessionDto>? sessions;
+
+    private DateTime newDate = DateTime.Today;
+    private string newTitle = string.Empty;
+    private string newNotes = string.Empty;
+
+    private int? editingId;
+    private DateTime editDate;
+    private string editTitle = string.Empty;
+    private string editNotes = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        sessions = await Api.GetSessionsAsync();
+    }
+
+    private async Task AddSession()
+    {
+        if (string.IsNullOrWhiteSpace(newTitle)) return;
+        await Api.CreateSessionAsync(new Services.ApiClient.CreateSessionRequest(
+            DateTime.SpecifyKind(newDate, DateTimeKind.Utc),
+            newTitle,
+            string.IsNullOrWhiteSpace(newNotes) ? null : newNotes));
+        sessions = await Api.GetSessionsAsync();
+        newTitle = string.Empty;
+        newNotes = string.Empty;
+        newDate = DateTime.Today;
+    }
+
+    private void StartEdit(Services.ApiClient.SessionDto session)
+    {
+        editingId = session.Id;
+        editDate = session.Date;
+        editTitle = session.Title;
+        editNotes = session.Notes ?? string.Empty;
+    }
+
+    private async Task SaveEdit()
+    {
+        if (editingId == null || string.IsNullOrWhiteSpace(editTitle)) return;
+        await Api.UpdateSessionAsync(editingId.Value, new Services.ApiClient.UpdateSessionRequest(
+            DateTime.SpecifyKind(editDate, DateTimeKind.Utc),
+            editTitle,
+            string.IsNullOrWhiteSpace(editNotes) ? null : editNotes));
+        sessions = await Api.GetSessionsAsync();
+        CancelEdit();
+    }
+
+    private void CancelEdit()
+    {
+        editingId = null;
+        editTitle = string.Empty;
+        editNotes = string.Empty;
+    }
+
+    private void NavigateToSession(int id)
+    {
+        Nav.NavigateTo($"/sessions/{id}");
+    }
+
+    private async Task DeleteSession(int id)
+    {
+        await Api.DeleteSessionAsync(id);
+        sessions = await Api.GetSessionsAsync();
+    }
+}

@@ -19,5 +19,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.ApplyConfiguration(new FocusConfiguration());
         modelBuilder.ApplyConfiguration(new ActivityConfiguration());
         modelBuilder.ApplyConfiguration(new SessionConfiguration());
+        modelBuilder.ApplyConfiguration(new SessionActivityConfiguration());
+        modelBuilder.ApplyConfiguration(new SessionActivityKeyPointConfiguration());
     }
 }

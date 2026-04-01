@@ -9,11 +9,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<Phase> Phases => Set<Phase>();
     public DbSet<Focus> Focuses => Set<Focus>();
     public DbSet<Activity> Activities => Set<Activity>();
+    public DbSet<Session> Sessions => Set<Session>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfiguration(new PhaseConfiguration());
         modelBuilder.ApplyConfiguration(new FocusConfiguration());
         modelBuilder.ApplyConfiguration(new ActivityConfiguration());
+        modelBuilder.ApplyConfiguration(new SessionConfiguration());
     }
 }

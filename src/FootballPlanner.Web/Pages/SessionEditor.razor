@@ -1,0 +1,221 @@
+@page "/sessions/{Id:int}"
+@inject Services.ApiClient Api
+
+@if (session == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <a href="/sessions">&larr; Back to Sessions</a>
+
+    @if (!editingSession)
+    {
+        <h1>@session.Title</h1>
+        <p>@session.Date.ToString("yyyy-MM-dd")</p>
+        @if (session.Notes != null) { <p>@session.Notes</p> }
+        <button @onclick="StartSessionEdit">Edit Details</button>
+    }
+    else
+    {
+        <h1>Edit Session</h1>
+        <input @bind="editTitle" placeholder="Title" />
+        <input @bind="editDate" type="date" />
+        <textarea @bind="editNotes" placeholder="Notes (optional)"></textarea>
+        <button @onclick="SaveSessionEdit">Save</button>
+        <button @onclick="CancelSessionEdit">Cancel</button>
+    }
+
+    <h2>Activities</h2>
+
+    @if (editingSessionActivityId == null)
+    {
+        @foreach (var sa in session.Activities)
+        {
+            <div style="border:1px solid #ccc; margin:8px; padding:8px;">
+                <strong>@(sa.Activity?.Name ?? "Unknown")</strong>
+                — @(sa.Phase?.Name ?? "") / @(sa.Focus?.Name ?? "")
+                — @sa.Duration min
+                @if (sa.Notes != null) { <div><em>@sa.Notes</em></div> }
+                @if (sa.KeyPoints.Count > 0)
+                {
+                    <ul>
+                        @foreach (var kp in sa.KeyPoints)
+                        {
+                            <li>@kp.Text</li>
+                        }
+                    </ul>
+                }
+                <button @onclick="() => StartActivityEdit(sa)">Edit</button>
+                <button @onclick="() => RemoveActivity(sa.Id)">Remove</button>
+            </div>
+        }
+
+        <h3>Add Activity</h3>
+        <select @bind="newActivityId">
+            <option value="0">-- Select Activity --</option>
+            @foreach (var a in allActivities ?? [])
+            {
+                <option value="@a.Id">@a.Name (@a.EstimatedDuration min)</option>
+            }
+        </select>
+        <select @bind="newPhaseId">
+            <option value="0">-- Select Phase --</option>
+            @foreach (var p in allPhases ?? [])
+            {
+                <option value="@p.Id">@p.Name</option>
+            }
+        </select>
+        <select @bind="newFocusId">
+            <option value="0">-- Select Focus --</option>
+            @foreach (var f in allFocuses ?? [])
+            {
+                <option value="@f.Id">@f.Name</option>
+            }
+        </select>
+        <input @bind="newDuration" type="number" placeholder="Duration (mins)" />
+        <textarea @bind="newActivityNotes" placeholder="Notes (optional)"></textarea>
+        <button @onclick="AddActivity">Add Activity</button>
+    }
+    else
+    {
+        <h3>Edit Activity</h3>
+        <select @bind="editPhaseId">
+            @foreach (var p in allPhases ?? [])
+            {
+                <option value="@p.Id">@p.Name</option>
+            }
+        </select>
+        <select @bind="editFocusId">
+            @foreach (var f in allFocuses ?? [])
+            {
+                <option value="@f.Id">@f.Name</option>
+            }
+        </select>
+        <input @bind="editDuration" type="number" placeholder="Duration (mins)" />
+        <textarea @bind="editActivityNotes" placeholder="Notes (optional)"></textarea>
+        <label>Key Points (one per line):</label>
+        <textarea @bind="editKeyPoints" rows="5" placeholder="One key point per line"></textarea>
+        <button @onclick="SaveActivityEdit">Save</button>
+        <button @onclick="CancelActivityEdit">Cancel</button>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private Services.ApiClient.SessionDto? session;
+    private List<Services.ApiClient.ActivityDto>? allActivities;
+    private List<Services.ApiClient.PhaseDto>? allPhases;
+    private List<Services.ApiClient.FocusDto>? allFocuses;
+
+    // Session edit state
+    private bool editingSession;
+    private string editTitle = string.Empty;
+    private DateTime editDate;
+    private string editNotes = string.Empty;
+
+    // Add activity form state
+    private int newActivityId;
+    private int newPhaseId;
+    private int newFocusId;
+    private int newDuration = 30;
+    private string newActivityNotes = string.Empty;
+
+    // Edit session activity state
+    private int? editingSessionActivityId;
+    private int editPhaseId;
+    private int editFocusId;
+    private int editDuration;
+    private string editActivityNotes = string.Empty;
+    private string editKeyPoints = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAll();
+    }
+
+    private async Task LoadAll()
+    {
+        session = await Api.GetSessionAsync(Id);
+        allActivities = await Api.GetActivitiesAsync();
+        allPhases = await Api.GetPhasesAsync();
+        allFocuses = await Api.GetFocusesAsync();
+    }
+
+    private void StartSessionEdit()
+    {
+        editingSession = true;
+        editTitle = session!.Title;
+        editDate = session.Date;
+        editNotes = session.Notes ?? string.Empty;
+    }
+
+    private async Task SaveSessionEdit()
+    {
+        if (string.IsNullOrWhiteSpace(editTitle)) return;
+        await Api.UpdateSessionAsync(Id, new Services.ApiClient.UpdateSessionRequest(
+            DateTime.SpecifyKind(editDate, DateTimeKind.Utc),
+            editTitle,
+            string.IsNullOrWhiteSpace(editNotes) ? null : editNotes));
+        session = await Api.GetSessionAsync(Id);
+        CancelSessionEdit();
+    }
+
+    private void CancelSessionEdit()
+    {
+        editingSession = false;
+    }
+
+    private async Task AddActivity()
+    {
+        if (newActivityId == 0 || newPhaseId == 0 || newFocusId == 0 || newDuration <= 0) return;
+        await Api.AddSessionActivityAsync(Id, new Services.ApiClient.AddSessionActivityRequest(
+            newActivityId, newPhaseId, newFocusId, newDuration,
+            string.IsNullOrWhiteSpace(newActivityNotes) ? null : newActivityNotes));
+        session = await Api.GetSessionAsync(Id);
+        newActivityId = 0;
+        newPhaseId = 0;
+        newFocusId = 0;
+        newDuration = 30;
+        newActivityNotes = string.Empty;
+    }
+
+    private void StartActivityEdit(Services.ApiClient.SessionActivityDto sa)
+    {
+        editingSessionActivityId = sa.Id;
+        editPhaseId = sa.PhaseId;
+        editFocusId = sa.FocusId;
+        editDuration = sa.Duration;
+        editActivityNotes = sa.Notes ?? string.Empty;
+        editKeyPoints = string.Join("\n", sa.KeyPoints.OrderBy(kp => kp.Order).Select(kp => kp.Text));
+    }
+
+    private async Task SaveActivityEdit()
+    {
+        if (editingSessionActivityId == null) return;
+        await Api.UpdateSessionActivityAsync(Id, editingSessionActivityId.Value,
+            new Services.ApiClient.UpdateSessionActivityRequest(
+                editPhaseId, editFocusId, editDuration,
+                string.IsNullOrWhiteSpace(editActivityNotes) ? null : editActivityNotes));
+        var keyPointLines = editKeyPoints
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+        await Api.UpdateSessionActivityKeyPointsAsync(Id, editingSessionActivityId.Value, keyPointLines);
+        session = await Api.GetSessionAsync(Id);
+        CancelActivityEdit();
+    }
+
+    private void CancelActivityEdit()
+    {
+        editingSessionActivityId = null;
+        editActivityNotes = string.Empty;
+        editKeyPoints = string.Empty;
+    }
+
+    private async Task RemoveActivity(int sessionActivityId)
+    {
+        await Api.RemoveSessionActivityAsync(Id, sessionActivityId);
+        session = await Api.GetSessionAsync(Id);
+    }
+}

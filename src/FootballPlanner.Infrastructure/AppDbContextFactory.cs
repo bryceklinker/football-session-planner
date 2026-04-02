@@ -9,7 +9,7 @@ public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
     {
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
         var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-            ?? "Server=localhost,1433;Database=FootballPlanner;User Id=sa;Password=YourStrongPassword123!;TrustServerCertificate=True";
+            ?? "Server=localhost,1433;Database=FootballPlanner;User Id=sa;Password=REPLACE_WITH_YOUR_DB_PASSWORD;TrustServerCertificate=True";
         optionsBuilder.UseSqlServer(connectionString);
         return new AppDbContext(optionsBuilder.Options);
     }

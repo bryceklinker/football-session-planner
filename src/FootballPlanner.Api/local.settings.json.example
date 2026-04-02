@@ -1,0 +1,14 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "DOTNET_ENVIRONMENT": "Development",
+    "Auth0__Domain": "your-tenant.auth0.com",
+    "Auth0__Audience": "your-api-identifier",
+    "AllowedOrigins": "http://localhost:4280"
+  },
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost,1433;Database=FootballPlanner;User Id=sa;Password=<your-db-password>;TrustServerCertificate=True"
+  }
+}

@@ -16,4 +16,4 @@ EXPOSE 4280
 CMD ["swa", "start", "/app/wwwroot", \
      "--host", "0.0.0.0", \
      "--port", "4280", \
-     "--api-location", "http://api:7071"]
+     "--api-devserver-url", "http://api:7071"]

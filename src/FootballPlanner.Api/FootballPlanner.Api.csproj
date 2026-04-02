@@ -25,8 +25,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="host.json">
+    <Content Include="host.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
   </ItemGroup>
 </Project>

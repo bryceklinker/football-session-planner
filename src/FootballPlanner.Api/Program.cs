@@ -3,7 +3,6 @@ using FootballPlanner.Application;
 using FootballPlanner.Infrastructure;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 var host = new HostBuilder()

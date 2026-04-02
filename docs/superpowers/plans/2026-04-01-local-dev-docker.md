@@ -75,12 +75,24 @@ Create `src/FootballPlanner.Api/local.settings.json.example`:
     "AllowedOrigins": "http://localhost:4280"
   },
   "ConnectionStrings": {
-    "DefaultConnection": "Server=(localdb)\\mssqllocaldb;Database=FootballPlanner;Trusted_Connection=True;"
+    "DefaultConnection": "Server=localhost,1433;Database=FootballPlanner;User Id=sa;Password=<your-db-password>;TrustServerCertificate=True"
   }
 }
 ```
 
-- [ ] **Step 3: Update .csproj to copy host.json to publish output**
+- [ ] **Step 3: Update AppDbContextFactory.cs to use Docker SQL Server**
+
+Read `src/FootballPlanner.Infrastructure/AppDbContextFactory.cs`. It currently hardcodes `(localdb)\\mssqllocaldb`. Replace the connection string to read from the `ConnectionStrings__DefaultConnection` environment variable with the Docker SQL Server connection as fallback:
+
+```csharp
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+    ?? "Server=localhost,1433;Database=FootballPlanner;User Id=sa;Password=YourStrongPassword123!;TrustServerCertificate=True";
+optionsBuilder.UseSqlServer(connectionString);
+```
+
+This ensures `dotnet ef migrations add` works when the Docker SQL Server container is running.
+
+- [ ] **Step 4: Update .csproj to copy host.json to publish output**
 
 Read `src/FootballPlanner.Api/FootballPlanner.Api.csproj`. Add an `<ItemGroup>` that marks `host.json` for copy to output (the `Microsoft.NET.Sdk.Worker` SDK does not copy it automatically):
 
@@ -94,7 +106,7 @@ Read `src/FootballPlanner.Api/FootballPlanner.Api.csproj`. Add an `<ItemGroup>` 
 
 Add this after the existing `<ItemGroup>` blocks (before `</Project>`).
 
-- [ ] **Step 4: Build to verify**
+- [ ] **Step 5: Build to verify**
 
 ```bash
 dotnet build src/FootballPlanner.Api 2>&1 | tail -5
@@ -107,13 +119,14 @@ ls src/FootballPlanner.Api/bin/Debug/net10.0/host.json
 ```
 Expected: file exists.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add src/FootballPlanner.Api/host.json \
         src/FootballPlanner.Api/local.settings.json.example \
-        src/FootballPlanner.Api/FootballPlanner.Api.csproj
-git commit -m "feat: add host.json and local.settings.json.example for Azure Functions local dev"
+        src/FootballPlanner.Api/FootballPlanner.Api.csproj \
+        src/FootballPlanner.Infrastructure/AppDbContextFactory.cs
+git commit -m "feat: add host.json, local.settings.json.example, and update AppDbContextFactory for Docker SQL Server"
 ```
 
 ---

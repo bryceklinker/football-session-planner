@@ -6,7 +6,7 @@ RUN dotnet publish src/FootballPlanner.Web/FootballPlanner.Web.csproj \
     -c Release -o /app/publish
 
 # Runtime stage
-FROM node:20-slim AS runtime
+FROM node:24-slim AS runtime
 RUN npm install -g @azure/static-web-apps-cli
 
 COPY --from=build /app/publish/wwwroot /app/wwwroot

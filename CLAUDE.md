@@ -98,6 +98,13 @@ dotnet ef database update \
 ### Infrastructure
 - `AddInfrastructure(IConfiguration, Action<DbContextOptionsBuilder>? configureDb = null)` — the optional `configureDb` lets tests substitute InMemory EF Core without changing the extension method
 
+### Code Organization
+- Code is organized by **feature**, not by type. Each feature (Activity, Phase, Focus, Session, SessionActivity) has its own directory in `Application/`, containing its commands, queries, handlers, and validators together.
+- Code shared across multiple features lives in `Application/Common/` organized by functionality (e.g., `Common/Behaviours/`).
+
+### Logging
+- All MediatR requests are logged via `LoggingBehaviour` (in `Application/Common/Behaviours/`): logs request name + parameters at start, duration at completion, and any exceptions with full context.
+
 ---
 
 ## Testing Conventions
@@ -105,7 +112,7 @@ dotnet ef database update \
 - **No mocking anywhere.** Use real implementations throughout all test levels.
 - **Unit tests** (`FootballPlanner.Unit.Tests`) — use `TestServiceProvider.CreateMediator()` which sets up real DI via `AddApplication()` + `AddInfrastructure()` with an InMemory database. Never instantiate handlers or validators directly.
 - **Integration tests** (`FootballPlanner.Integration.Tests`) — use `TestApplication` (implements `IAsyncLifetime`, used as `IClassFixture<TestApplication>`). Starts a SQL Server container via Testcontainers, runs real migrations, exposes `IMediator Mediator`.
-- **Feature tests** (`FootballPlanner.Feature.Tests`) — Playwright end-to-end tests against a running instance. Cover key user flows.
+- **Feature tests** (`FootballPlanner.Feature.Tests`) — Playwright end-to-end tests against the full running Docker Compose stack (`docker compose up`). Cover key user flows end-to-end.
 - All tests call `mediator.Send(command)` — never call handlers directly.
 - Do **NOT** use FluentAssertions (licensing change). Use standard xUnit `Assert.*` methods only.
 - All new features and bug fixes are test-driven.

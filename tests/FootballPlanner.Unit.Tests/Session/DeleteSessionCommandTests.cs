@@ -1,4 +1,5 @@
-using FootballPlanner.Application.Session;
+using FootballPlanner.Application.Session.Commands;
+using FootballPlanner.Application.Session.Queries;
 using FootballPlanner.Unit.Tests.Infrastructure;
 
 namespace FootballPlanner.Unit.Tests.Session;

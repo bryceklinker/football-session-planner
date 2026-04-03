@@ -1,4 +1,5 @@
-using FootballPlanner.Application.Focus;
+using FootballPlanner.Application.Focus.Commands;
+using FootballPlanner.Application.Focus.Queries;
 using FootballPlanner.Integration.Tests.Infrastructure;
 
 namespace FootballPlanner.Integration.Tests.Focus;

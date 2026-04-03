@@ -1,8 +1,12 @@
-using FootballPlanner.Application.Activity;
-using FootballPlanner.Application.Focus;
-using FootballPlanner.Application.Phase;
-using FootballPlanner.Application.Session;
-using FootballPlanner.Application.SessionActivity;
+using FootballPlanner.Application.Activity.Commands;
+using FootballPlanner.Application.Activity.Queries;
+using FootballPlanner.Application.Focus.Commands;
+using FootballPlanner.Application.Focus.Queries;
+using FootballPlanner.Application.Phase.Commands;
+using FootballPlanner.Application.Phase.Queries;
+using FootballPlanner.Application.Session.Commands;
+using FootballPlanner.Application.Session.Queries;
+using FootballPlanner.Application.SessionActivity.Commands;
 using FootballPlanner.Integration.Tests.Infrastructure;
 
 namespace FootballPlanner.Integration.Tests.Session;

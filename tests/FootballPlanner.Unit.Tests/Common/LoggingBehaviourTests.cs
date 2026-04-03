@@ -1,5 +1,5 @@
 using FootballPlanner.Application;
-using FootballPlanner.Application.Activity;
+using FootballPlanner.Application.Activity.Commands;
 using FootballPlanner.Infrastructure;
 using FootballPlanner.Unit.Tests.Infrastructure;
 using MediatR;

@@ -64,6 +64,7 @@ public class LoggingBehaviourTests
             r.Level == LogLevel.Error &&
             r.Message.Contains("failed") &&
             r.Message.Contains("CreateActivityCommand") &&
-            r.Message.Contains("ms"));
+            r.Message.Contains("ms") &&
+            r.Exception is FluentValidation.ValidationException);
     }
 }

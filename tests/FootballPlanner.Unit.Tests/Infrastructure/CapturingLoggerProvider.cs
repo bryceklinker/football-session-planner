@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace FootballPlanner.Unit.Tests.Infrastructure;
 
-public record LogRecord(LogLevel Level, string Message);
+public record LogRecord(LogLevel Level, EventId EventId, Exception? Exception, string Message);
 
 public class CapturingLoggerProvider : ILoggerProvider
 {
@@ -25,6 +25,6 @@ public class CapturingLogger(List<LogRecord> records) : ILogger
         Exception? exception,
         Func<TState, Exception?, string> formatter)
     {
-        records.Add(new LogRecord(logLevel, formatter(state, exception)));
+        records.Add(new LogRecord(logLevel, eventId, exception, formatter(state, exception)));
     }
 }

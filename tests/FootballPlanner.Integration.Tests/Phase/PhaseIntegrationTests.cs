@@ -1,5 +1,4 @@
-using FootballPlanner.Application.Commands.Phase;
-using FootballPlanner.Application.Queries.Phase;
+using FootballPlanner.Application.Phase;
 using FootballPlanner.Integration.Tests.Infrastructure;
 
 namespace FootballPlanner.Integration.Tests.Phase;

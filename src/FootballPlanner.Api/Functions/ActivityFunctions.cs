@@ -1,5 +1,4 @@
-using FootballPlanner.Application.Commands.Activity;
-using FootballPlanner.Application.Queries.Activity;
+using FootballPlanner.Application.Activity;
 using MediatR;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;

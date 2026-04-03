@@ -1,4 +1,4 @@
-using FootballPlanner.Application.Commands.Phase;
+using FootballPlanner.Application.Phase;
 using FootballPlanner.Unit.Tests.Infrastructure;
 
 namespace FootballPlanner.Unit.Tests.Phase;

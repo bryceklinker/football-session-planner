@@ -1,8 +1,8 @@
-using FootballPlanner.Application.Commands.Activity;
-using FootballPlanner.Application.Commands.Focus;
-using FootballPlanner.Application.Commands.Phase;
-using FootballPlanner.Application.Commands.Session;
-using FootballPlanner.Application.Commands.SessionActivity;
+using FootballPlanner.Application.Activity;
+using FootballPlanner.Application.Focus;
+using FootballPlanner.Application.Phase;
+using FootballPlanner.Application.Session;
+using FootballPlanner.Application.SessionActivity;
 using FootballPlanner.Unit.Tests.Infrastructure;
 
 namespace FootballPlanner.Unit.Tests.SessionActivity;

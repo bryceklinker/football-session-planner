@@ -1,5 +1,4 @@
-using FootballPlanner.Application.Commands.Activity;
-using FootballPlanner.Application.Queries.Activity;
+using FootballPlanner.Application.Activity;
 using FootballPlanner.Unit.Tests.Infrastructure;
 
 namespace FootballPlanner.Unit.Tests.Activity;

@@ -1,5 +1,4 @@
 using FluentValidation;
-using FootballPlanner.Application.Behaviours;
 using FootballPlanner.Application.Common.Behaviours;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;

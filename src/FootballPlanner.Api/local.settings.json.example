@@ -2,6 +2,7 @@
   "IsEncrypted": false,
   "Values": {
     "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "_AzureWebJobsStorage_note": "UseDevelopmentStorage=true requires Azurite (npx azurite). Set to empty string for HTTP-only function apps.",
     "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
     "DOTNET_ENVIRONMENT": "Development",
     "Auth0__Domain": "your-tenant.auth0.com",

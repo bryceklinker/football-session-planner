@@ -4,4 +4,5 @@ obj/
 *.user
 local.settings.json
 .env
+.env.test
 .pulumi/

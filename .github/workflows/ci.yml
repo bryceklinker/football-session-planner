@@ -26,14 +26,39 @@ jobs:
       - name: Build
         run: dotnet build FootballPlanner.slnx --no-restore --configuration Release
 
+      - name: Install Playwright browsers
+        run: pwsh tests/FootballPlanner.Feature.Tests/bin/Release/net10.0/playwright.ps1 install chromium
+
       - name: Run unit tests
         run: dotnet test tests/FootballPlanner.Unit.Tests --no-build --configuration Release --logger trx
 
       - name: Run integration tests
         run: dotnet test tests/FootballPlanner.Integration.Tests --no-build --configuration Release --logger trx
 
+      - name: Create .env for Docker Compose
+        # Variable names match what docker-compose.yml expects:
+        #   DB_PASSWORD      → SA_PASSWORD on the SQL Server container
+        #   AUTH0_DOMAIN     → Auth0__Domain on the API container
+        #   AUTH0_AUDIENCE   → Auth0__Audience on the API container
+        run: |
+          echo "AUTH0_DOMAIN=${{ secrets.AUTH0_DOMAIN }}" >> .env
+          echo "AUTH0_AUDIENCE=${{ secrets.AUTH0_AUDIENCE }}" >> .env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+
+      - name: Start Docker Compose stack
+        run: |
+          docker compose up -d
+          curl --retry 15 --retry-delay 3 --retry-connrefused -s http://localhost:4280/ > /dev/null
+
       - name: Run feature tests
+        env:
+          AUTH0_TEST_USER_EMAIL: ${{ secrets.AUTH0_TEST_USER_EMAIL }}
+          AUTH0_TEST_USER_PASSWORD: ${{ secrets.AUTH0_TEST_USER_PASSWORD }}
         run: dotnet test tests/FootballPlanner.Feature.Tests --no-build --configuration Release --logger trx
+
+      - name: Stop Docker Compose stack
+        if: always()
+        run: docker compose down
 
   pulumi-preview:
     runs-on: ubuntu-latest

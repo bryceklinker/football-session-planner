@@ -4,7 +4,7 @@
 
 **Goal:** Add Playwright end-to-end feature tests covering key user planning journeys against the full Docker Compose stack.
 
-**Architecture:** A `FeatureTestFixture` (IClassFixture) launches Playwright, authenticates once via Auth0, and saves browser storage state to a temp file. Each test calls `fixture.NewPageAsync()` which creates a fresh `IBrowserContext` loaded with that auth state and returns a new `IPage` — giving each test isolated navigation state without re-authenticating. Journey classes (`PhaseJourney`, `FocusJourney`, `ActivityJourney`, `SessionJourney`, `SessionEditorJourney`) are stateless helpers that receive an `IPage` and drive the browser. Three independent `[Fact]` tests in `PlanningJourneyTests` each create their own prerequisites and compose journeys into user stories. CI modifies the existing `build-and-test` job to start the Docker Compose stack before running feature tests and tear it down after.
+**Architecture:** A `FeatureTestFixture` (IClassFixture) launches Playwright, authenticates once via Auth0, and saves browser storage state to a temp file. Each test calls `fixture.NewPageAsync()` which creates a fresh `IBrowserContext` loaded with that auth state and returns a new `IPage` — giving each test isolated navigation state without re-authenticating. Journey classes (`PhaseJourney`, `FocusJourney`, `ActivityJourney`, `SessionJourney`, `SessionEditorJourney`) are stateless helpers that receive an `IPage` and drive the browser. Each journey method accepts an input record (e.g. `CreateActivityInput`) defined in the same file — making it easy to add fields later without changing method signatures. Three independent `[Fact]` tests in `PlanningJourneyTests` each create their own prerequisites and compose journeys into user stories. CI modifies the existing `build-and-test` job to start the Docker Compose stack before running feature tests and tear it down after.
 
 **Tech Stack:** .NET 10, Microsoft.Playwright 1.58.0, xUnit 2.9.3, Docker Compose, Auth0
 
@@ -13,13 +13,13 @@
 ## File Map
 
 **New files:**
-- `tests/FootballPlanner.Feature.Tests/Infrastructure/FeatureTestFixture.cs` — IAsyncLifetime, Playwright lifecycle, auth storage state, NewPageAsync()
+- `tests/FootballPlanner.Feature.Tests/Infrastructure/FeatureTestFixture.cs` — IAsyncLifetime, Playwright lifecycle, auth storage state; `NewPageAsync()` creates a fresh page and binds all journey properties; exposes `Page`, `PhaseJourney`, `FocusJourney`, `ActivityJourney`, `SessionJourney`, `SessionEditorJourney`
 - `tests/FootballPlanner.Feature.Tests/Infrastructure/AuthJourney.cs` — logs in via Auth0 UI, reads credentials from env vars
-- `tests/FootballPlanner.Feature.Tests/Journeys/PhaseJourney.cs` — CreatePhaseAsync(name, order)
-- `tests/FootballPlanner.Feature.Tests/Journeys/FocusJourney.cs` — CreateFocusAsync(name)
-- `tests/FootballPlanner.Feature.Tests/Journeys/ActivityJourney.cs` — CreateActivityAsync(name, description, estimatedDurationMinutes)
-- `tests/FootballPlanner.Feature.Tests/Journeys/SessionJourney.cs` — CreateSessionAsync(title, date), NavigateToEditorAsync(title)
-- `tests/FootballPlanner.Feature.Tests/Journeys/SessionEditorJourney.cs` — AddActivityAsync(activityName, activityEstimatedDuration, phaseName, focusName, sessionDuration)
+- `tests/FootballPlanner.Feature.Tests/Journeys/PhaseJourney.cs` — `CreatePhaseInput` record + `CreatePhaseAsync(CreatePhaseInput)`
+- `tests/FootballPlanner.Feature.Tests/Journeys/FocusJourney.cs` — `CreateFocusInput` record + `CreateFocusAsync(CreateFocusInput)`
+- `tests/FootballPlanner.Feature.Tests/Journeys/ActivityJourney.cs` — `CreateActivityInput` record + `CreateActivityAsync(CreateActivityInput)`
+- `tests/FootballPlanner.Feature.Tests/Journeys/SessionJourney.cs` — `CreateSessionInput` record + `CreateSessionAsync(CreateSessionInput)`, `NavigateToEditorAsync(string title)`
+- `tests/FootballPlanner.Feature.Tests/Journeys/SessionEditorJourney.cs` — `AddActivityInput` record + `AddActivityAsync(AddActivityInput)`
 - `tests/FootballPlanner.Feature.Tests/Tests/PlanningJourneyTests.cs` — three independent [Fact] planning journey tests
 - `.env.test.example` — documents Auth0 test credentials env vars (separate from .env which is the Docker Compose file)
 
@@ -63,6 +63,7 @@ echo ".env.test" >> .gitignore
 Create `tests/FootballPlanner.Feature.Tests/Infrastructure/FeatureTestFixture.cs`:
 
 ```csharp
+using FootballPlanner.Feature.Tests.Journeys;
 using Microsoft.Playwright;
 
 namespace FootballPlanner.Feature.Tests.Infrastructure;
@@ -75,6 +76,16 @@ public class FeatureTestFixture : IAsyncLifetime
     private IBrowser? _browser;
     private string? _storageStatePath;
     private readonly List<IBrowserContext> _contexts = [];
+
+    // Set by NewPageAsync() — available for direct assertions in tests
+    public IPage Page { get; private set; } = null!;
+
+    // Journey properties — rebound to the fresh page on each NewPageAsync() call
+    public PhaseJourney PhaseJourney { get; private set; } = null!;
+    public FocusJourney FocusJourney { get; private set; } = null!;
+    public ActivityJourney ActivityJourney { get; private set; } = null!;
+    public SessionJourney SessionJourney { get; private set; } = null!;
+    public SessionEditorJourney SessionEditorJourney { get; private set; } = null!;
 
     public async Task InitializeAsync()
     {
@@ -96,11 +107,21 @@ public class FeatureTestFixture : IAsyncLifetime
         }
     }
 
-    public async Task<IPage> NewPageAsync()
+    /// <summary>
+    /// Creates a fresh authenticated browser context and page for the current test,
+    /// then rebinds all journey properties to that page.
+    /// Call once at the start of each [Fact].
+    /// </summary>
+    public async Task NewPageAsync()
     {
         var context = await _browser!.NewContextAsync(new() { StorageStatePath = _storageStatePath });
         _contexts.Add(context);
-        return await context.NewPageAsync();
+        Page = await context.NewPageAsync();
+        PhaseJourney = new PhaseJourney(Page);
+        FocusJourney = new FocusJourney(Page);
+        ActivityJourney = new ActivityJourney(Page);
+        SessionJourney = new SessionJourney(Page);
+        SessionEditorJourney = new SessionEditorJourney(Page);
     }
 
     public async Task DisposeAsync()
@@ -192,7 +213,9 @@ git commit -m "feat: add FeatureTestFixture and AuthJourney"
 - Create: `tests/FootballPlanner.Feature.Tests/Journeys/FocusJourney.cs`
 - Create: `tests/FootballPlanner.Feature.Tests/Journeys/ActivityJourney.cs`
 
-These journeys navigate to their respective pages, fill in the create form, click Add, and wait for the page to update. Selectors are derived from the placeholder text in the Blazor razor components.
+Each file defines an input record alongside the journey class. The record holds all arguments the method needs — adding a new field later only requires updating the record and the call sites, not the method signature.
+
+Selectors are derived from the placeholder text in the Blazor razor components.
 
 - [ ] **Step 1: Create PhaseJourney**
 
@@ -204,15 +227,17 @@ using Microsoft.Playwright;
 
 namespace FootballPlanner.Feature.Tests.Journeys;
 
+public record CreatePhaseInput(string Name, int Order);
+
 public class PhaseJourney(IPage page)
 {
-    public async Task CreatePhaseAsync(string name, int order)
+    public async Task CreatePhaseAsync(CreatePhaseInput input)
     {
         await page.GotoAsync($"{FeatureTestFixture.BaseUrl}/phases");
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
-        await page.GetByPlaceholder("Phase name").FillAsync(name);
-        await page.GetByPlaceholder("Order").FillAsync(order.ToString());
+        await page.GetByPlaceholder("Phase name").FillAsync(input.Name);
+        await page.GetByPlaceholder("Order").FillAsync(input.Order.ToString());
         await page.GetByRole(AriaRole.Button, new() { Name = "Add" }).ClickAsync();
 
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
@@ -230,14 +255,16 @@ using Microsoft.Playwright;
 
 namespace FootballPlanner.Feature.Tests.Journeys;
 
+public record CreateFocusInput(string Name);
+
 public class FocusJourney(IPage page)
 {
-    public async Task CreateFocusAsync(string name)
+    public async Task CreateFocusAsync(CreateFocusInput input)
     {
         await page.GotoAsync($"{FeatureTestFixture.BaseUrl}/focuses");
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
-        await page.GetByPlaceholder("Focus name").FillAsync(name);
+        await page.GetByPlaceholder("Focus name").FillAsync(input.Name);
         await page.GetByRole(AriaRole.Button, new() { Name = "Add" }).ClickAsync();
 
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
@@ -255,16 +282,18 @@ using Microsoft.Playwright;
 
 namespace FootballPlanner.Feature.Tests.Journeys;
 
+public record CreateActivityInput(string Name, string Description, int EstimatedDurationMinutes);
+
 public class ActivityJourney(IPage page)
 {
-    public async Task CreateActivityAsync(string name, string description, int estimatedDurationMinutes)
+    public async Task CreateActivityAsync(CreateActivityInput input)
     {
         await page.GotoAsync($"{FeatureTestFixture.BaseUrl}/activities");
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
-        await page.GetByPlaceholder("Name").FillAsync(name);
-        await page.GetByPlaceholder("Description").FillAsync(description);
-        await page.GetByPlaceholder("Duration (mins)").FillAsync(estimatedDurationMinutes.ToString());
+        await page.GetByPlaceholder("Name").FillAsync(input.Name);
+        await page.GetByPlaceholder("Description").FillAsync(input.Description);
+        await page.GetByPlaceholder("Duration (mins)").FillAsync(input.EstimatedDurationMinutes.ToString());
         await page.GetByRole(AriaRole.Button, new() { Name = "Add" }).ClickAsync();
 
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
@@ -295,7 +324,9 @@ git commit -m "feat: add Phase, Focus, and Activity journey classes"
 - Create: `tests/FootballPlanner.Feature.Tests/Journeys/SessionJourney.cs`
 - Create: `tests/FootballPlanner.Feature.Tests/Journeys/SessionEditorJourney.cs`
 
-`SessionJourney` creates a session and navigates to its editor. `SessionEditorJourney.AddActivityAsync` takes both the activity's estimated duration (to match the option label text `"Rondo (10 min)"`) and the session activity duration (to fill in the duration field). These may be different — e.g., estimated 30 min but you want this session to run 15 min.
+`SessionJourney.CreateSessionAsync` takes a `CreateSessionInput`. `NavigateToEditorAsync` takes a plain `string title` — wrapping a single string in a record adds no extensibility benefit.
+
+`AddActivityInput` separates `ActivityEstimatedDuration` (used to match the dropdown label `"Rondo (10 min)"`) from `SessionDuration` (the duration field on the session activity). These may differ — e.g. estimated 30 min but scheduled for 15 min in this session.
 
 - [ ] **Step 1: Create SessionJourney**
 
@@ -307,15 +338,17 @@ using Microsoft.Playwright;
 
 namespace FootballPlanner.Feature.Tests.Journeys;
 
+public record CreateSessionInput(string Title, DateTime Date);
+
 public class SessionJourney(IPage page)
 {
-    public async Task CreateSessionAsync(string title, DateTime date)
+    public async Task CreateSessionAsync(CreateSessionInput input)
     {
         await page.GotoAsync($"{FeatureTestFixture.BaseUrl}/sessions");
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
-        await page.Locator("input[type='date']").FillAsync(date.ToString("yyyy-MM-dd"));
-        await page.GetByPlaceholder("Title").FillAsync(title);
+        await page.Locator("input[type='date']").FillAsync(input.Date.ToString("yyyy-MM-dd"));
+        await page.GetByPlaceholder("Title").FillAsync(input.Title);
         await page.GetByRole(AriaRole.Button, new() { Name = "Add Session" }).ClickAsync();
 
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
@@ -343,39 +376,38 @@ using Microsoft.Playwright;
 
 namespace FootballPlanner.Feature.Tests.Journeys;
 
+/// <param name="ActivityName">Name of the activity to select from the dropdown.</param>
+/// <param name="ActivityEstimatedDuration">Estimated duration used when the activity was created — needed to match the dropdown label "{name} ({duration} min)".</param>
+/// <param name="PhaseName">Phase to assign to this session activity.</param>
+/// <param name="FocusName">Focus to assign to this session activity.</param>
+/// <param name="SessionDuration">How long this activity will run in the session (may differ from estimated duration).</param>
+public record AddActivityInput(
+    string ActivityName,
+    int ActivityEstimatedDuration,
+    string PhaseName,
+    string FocusName,
+    int SessionDuration);
+
 public class SessionEditorJourney(IPage page)
 {
-    /// <summary>
-    /// Adds an activity to the current session.
-    /// </summary>
-    /// <param name="activityName">Name of the activity to select from the dropdown.</param>
-    /// <param name="activityEstimatedDuration">Estimated duration used when the activity was created — needed to match the dropdown label "{name} ({duration} min)".</param>
-    /// <param name="phaseName">Phase to assign to this session activity.</param>
-    /// <param name="focusName">Focus to assign to this session activity.</param>
-    /// <param name="sessionDuration">How long this activity will run in the session (may differ from estimated duration).</param>
-    public async Task AddActivityAsync(
-        string activityName,
-        int activityEstimatedDuration,
-        string phaseName,
-        string focusName,
-        int sessionDuration)
+    public async Task AddActivityAsync(AddActivityInput input)
     {
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
         // Activity dropdown option text is "{name} ({estimatedDuration} min)"
         await page.Locator("select")
             .Filter(new() { HasText = "-- Select Activity --" })
-            .SelectOptionAsync(new SelectOptionValue { Label = $"{activityName} ({activityEstimatedDuration} min)" });
+            .SelectOptionAsync(new SelectOptionValue { Label = $"{input.ActivityName} ({input.ActivityEstimatedDuration} min)" });
 
         await page.Locator("select")
             .Filter(new() { HasText = "-- Select Phase --" })
-            .SelectOptionAsync(new SelectOptionValue { Label = phaseName });
+            .SelectOptionAsync(new SelectOptionValue { Label = input.PhaseName });
 
         await page.Locator("select")
             .Filter(new() { HasText = "-- Select Focus --" })
-            .SelectOptionAsync(new SelectOptionValue { Label = focusName });
+            .SelectOptionAsync(new SelectOptionValue { Label = input.FocusName });
 
-        await page.GetByPlaceholder("Duration (mins)").FillAsync(sessionDuration.ToString());
+        await page.GetByPlaceholder("Duration (mins)").FillAsync(input.SessionDuration.ToString());
         await page.GetByRole(AriaRole.Button, new() { Name = "Add Activity" }).ClickAsync();
 
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
@@ -435,60 +467,59 @@ public class PlanningJourneyTests(FeatureTestFixture fixture) : IClassFixture<Fe
     [Fact]
     public async Task CanSetUpReferenceData()
     {
-        var page = await fixture.NewPageAsync();
+        await fixture.NewPageAsync();
 
-        await new PhaseJourney(page).CreatePhaseAsync("Warm Up", 1);
-        await new FocusJourney(page).CreateFocusAsync("Technique");
+        await fixture.PhaseJourney.CreatePhaseAsync(new CreatePhaseInput("Warm Up", 1));
+        await fixture.FocusJourney.CreateFocusAsync(new CreateFocusInput("Technique"));
 
-        await page.GotoAsync($"{FeatureTestFixture.BaseUrl}/phases");
-        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        await Assertions.Expect(page.Locator("table")).ToContainTextAsync("Warm Up");
+        await fixture.Page.GotoAsync($"{FeatureTestFixture.BaseUrl}/phases");
+        await fixture.Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Assertions.Expect(fixture.Page.Locator("table")).ToContainTextAsync("Warm Up");
 
-        await page.GotoAsync($"{FeatureTestFixture.BaseUrl}/focuses");
-        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        await Assertions.Expect(page.Locator("table")).ToContainTextAsync("Technique");
+        await fixture.Page.GotoAsync($"{FeatureTestFixture.BaseUrl}/focuses");
+        await fixture.Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Assertions.Expect(fixture.Page.Locator("table")).ToContainTextAsync("Technique");
     }
 
     [Fact]
     public async Task CanBuildActivityLibrary()
     {
-        var page = await fixture.NewPageAsync();
+        await fixture.NewPageAsync();
 
-        await new PhaseJourney(page).CreatePhaseAsync("Warm Up", 1);
-        await new FocusJourney(page).CreateFocusAsync("Technique");
-        await new ActivityJourney(page).CreateActivityAsync("Rondo", "A possession drill", 10);
+        await fixture.PhaseJourney.CreatePhaseAsync(new CreatePhaseInput("Warm Up", 1));
+        await fixture.FocusJourney.CreateFocusAsync(new CreateFocusInput("Technique"));
+        await fixture.ActivityJourney.CreateActivityAsync(new CreateActivityInput("Rondo", "A possession drill", 10));
 
-        await page.GotoAsync($"{FeatureTestFixture.BaseUrl}/activities");
-        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        await Assertions.Expect(page.Locator("table")).ToContainTextAsync("Rondo");
-        await Assertions.Expect(page.Locator("table")).ToContainTextAsync("A possession drill");
-        await Assertions.Expect(page.Locator("table")).ToContainTextAsync("10 min");
+        await fixture.Page.GotoAsync($"{FeatureTestFixture.BaseUrl}/activities");
+        await fixture.Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        await Assertions.Expect(fixture.Page.Locator("table")).ToContainTextAsync("Rondo");
+        await Assertions.Expect(fixture.Page.Locator("table")).ToContainTextAsync("A possession drill");
+        await Assertions.Expect(fixture.Page.Locator("table")).ToContainTextAsync("10 min");
     }
 
     [Fact]
     public async Task CanPlanASession()
     {
-        var page = await fixture.NewPageAsync();
+        await fixture.NewPageAsync();
 
-        await new PhaseJourney(page).CreatePhaseAsync("Warm Up", 1);
-        await new FocusJourney(page).CreateFocusAsync("Technique");
-        await new ActivityJourney(page).CreateActivityAsync("Rondo", "A possession drill", 10);
+        await fixture.PhaseJourney.CreatePhaseAsync(new CreatePhaseInput("Warm Up", 1));
+        await fixture.FocusJourney.CreateFocusAsync(new CreateFocusInput("Technique"));
+        await fixture.ActivityJourney.CreateActivityAsync(new CreateActivityInput("Rondo", "A possession drill", 10));
 
-        var sessionJourney = new SessionJourney(page);
-        await sessionJourney.CreateSessionAsync("Tuesday Training", DateTime.Today);
-        await sessionJourney.NavigateToEditorAsync("Tuesday Training");
+        await fixture.SessionJourney.CreateSessionAsync(new CreateSessionInput("Tuesday Training", DateTime.Today));
+        await fixture.SessionJourney.NavigateToEditorAsync("Tuesday Training");
 
-        await new SessionEditorJourney(page).AddActivityAsync(
-            activityName: "Rondo",
-            activityEstimatedDuration: 10,
-            phaseName: "Warm Up",
-            focusName: "Technique",
-            sessionDuration: 10);
+        await fixture.SessionEditorJourney.AddActivityAsync(new AddActivityInput(
+            ActivityName: "Rondo",
+            ActivityEstimatedDuration: 10,
+            PhaseName: "Warm Up",
+            FocusName: "Technique",
+            SessionDuration: 10));
 
-        await Assertions.Expect(page.GetByText("Rondo")).ToBeVisibleAsync();
+        await Assertions.Expect(fixture.Page.GetByText("Rondo")).ToBeVisibleAsync();
         // Exact = false because the activity div renders "— Warm Up / Technique — 10 min"
         // and GetByText with exact matching would not find a partial substring
-        await Assertions.Expect(page.GetByText("Warm Up / Technique", new() { Exact = false })).ToBeVisibleAsync();
+        await Assertions.Expect(fixture.Page.GetByText("Warm Up / Technique", new() { Exact = false })).ToBeVisibleAsync();
     }
 }
 ```
@@ -514,7 +545,7 @@ Expected: `Passed! — 3 tests`
 **If tests fail:**
 - 401 errors or redirect loops → check Auth0 credentials and that your tenant uses Universal Login (two-step). If Classic Login, update `AuthJourney` — see the comment in that file.
 - Element not found → Blazor may still be loading; increase `WaitForLoadStateAsync` timeout or add explicit `WaitForAsync` on a key element.
-- Activity dropdown option not found → verify the activity was created with the exact estimated duration passed to `AddActivityAsync`.
+- Activity dropdown option not found → verify the activity was created with the exact estimated duration passed to `AddActivityInput.ActivityEstimatedDuration`.
 
 - [ ] **Step 4: Commit**
 

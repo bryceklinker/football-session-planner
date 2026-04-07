@@ -4,6 +4,7 @@
       <File Path="docker-compose.yml" />
       <File Path=".env.example" />
     </Files>
+    <File Path="global.json" />
   </Folder>
   <Folder Name="/infra/">
     <Project Path="infra/FootballPlanner.Infra.csproj" />

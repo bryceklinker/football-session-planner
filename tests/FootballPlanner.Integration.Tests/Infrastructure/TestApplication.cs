@@ -10,7 +10,7 @@ namespace FootballPlanner.Integration.Tests.Infrastructure;
 
 public class TestApplication : IAsyncLifetime
 {
-    private readonly MsSqlContainer _container = new MsSqlBuilder().Build();
+    private readonly MsSqlContainer _container = new MsSqlBuilder("mcr.microsoft.com/mssql/server:2022-CU14-ubuntu-22.04").Build();
 
     public IMediator Mediator { get; private set; } = null!;
 

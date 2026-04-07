@@ -23,7 +23,10 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <EFCoreDesignEmbedResourceFiles>false</EFCoreDesignEmbedResourceFiles>
   </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Remove="**/*.resx" />
+  </ItemGroup>
 
 </Project>

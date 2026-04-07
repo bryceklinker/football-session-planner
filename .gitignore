@@ -1,9 +1,9 @@
-bin/
-obj/
+**/bin/
+**/obj/
 .vs/
 .idea/
 *.user
 local.settings.json
 .env
 .env.test
-.pulumi/
+**/.pulumi/**/*.*

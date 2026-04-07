@@ -6,6 +6,9 @@
     </Files>
     <File Path="global.json" />
   </Folder>
+  <Folder Name="/.scm/">
+    <File Path=".gitignore" />
+  </Folder>
   <Folder Name="/infra/">
     <Project Path="infra/FootballPlanner.Infra.csproj" />
   </Folder>

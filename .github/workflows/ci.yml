@@ -8,15 +8,15 @@ on:
 
 env:
   AZURE_LOCATION: centralus
-
+  
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
 
@@ -51,7 +51,7 @@ jobs:
       - name: Start Docker Compose stack
         run: |
           docker compose up -d
-          curl --retry 15 --retry-delay 3 --retry-connrefused -s http://localhost:4280/ > /dev/null
+          curl --retry 20 --retry-delay 5 --retry-all-errors -s http://localhost:4280/ > /dev/null
 
       - name: Run feature tests
         env:
@@ -68,10 +68,10 @@ jobs:
     needs: build-and-test
     if: github.ref == 'refs/heads/main' || github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
 

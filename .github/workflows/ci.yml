@@ -59,6 +59,10 @@ jobs:
           AUTH0_TEST_USER_PASSWORD: ${{ secrets.AUTH0_TEST_USER_PASSWORD }}
         run: dotnet test tests/FootballPlanner.Feature.Tests --no-build --configuration Release --logger trx
 
+      - name: Dump Docker Compose logs
+        if: always()
+        run: docker compose logs --no-color
+
       - name: Stop Docker Compose stack
         if: always()
         run: docker compose down

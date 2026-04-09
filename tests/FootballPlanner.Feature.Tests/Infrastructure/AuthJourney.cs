@@ -6,12 +6,14 @@ public class AuthJourney(IPage page, string baseUrl)
 {
     public async Task LoginAsync()
     {
-        var email = Environment.GetEnvironmentVariable("AUTH0_TEST_USER_EMAIL")
-            ?? throw new InvalidOperationException(
+        var email = Environment.GetEnvironmentVariable("AUTH0_TEST_USER_EMAIL");
+        if (string.IsNullOrEmpty(email))
+            throw new InvalidOperationException(
                 "AUTH0_TEST_USER_EMAIL is not set. See .env.test.example for setup instructions.");
 
-        var password = Environment.GetEnvironmentVariable("AUTH0_TEST_USER_PASSWORD")
-            ?? throw new InvalidOperationException(
+        var password = Environment.GetEnvironmentVariable("AUTH0_TEST_USER_PASSWORD");
+        if (string.IsNullOrEmpty(password))
+            throw new InvalidOperationException(
                 "AUTH0_TEST_USER_PASSWORD is not set. See .env.test.example for setup instructions.");
 
         await page.GotoAsync(baseUrl);

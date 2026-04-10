@@ -10,6 +10,7 @@
     <File Path="CLAUDE.md" />
     <File Path="docker-compose.yml" />
     <File Path="global.json" />
+    <File Path="Makefile" />
   </Folder>
   <Folder Name="/.github/" />
   <Folder Name="/.github/actions/" />

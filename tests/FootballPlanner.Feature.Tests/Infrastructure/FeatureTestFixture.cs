@@ -49,7 +49,12 @@ public class FeatureTestFixture : IAsyncLifetime
     /// </summary>
     public async Task NewPageAsync()
     {
-        var context = await _browser!.NewContextAsync(new() { StorageStatePath = _storageStatePath });
+        var context = await _browser!.NewContextAsync(new()
+        {
+            StorageStatePath = _storageStatePath,
+            RecordVideoDir = "playwright-videos",
+            RecordVideoSize = new RecordVideoSize { Width = 1280, Height = 720 }
+        });
         _contexts.Add(context);
         Page = await context.NewPageAsync();
         PhaseJourney = new PhaseJourney(Page);

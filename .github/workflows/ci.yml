@@ -56,13 +56,21 @@ jobs:
           curl --retry 20 --retry-delay 5 --retry-all-errors -s http://localhost:4280/ > /dev/null
 
       - name: Run feature tests
+        id: feature-tests
         env:
           AUTH0_TEST_USER_EMAIL: ${{ secrets.AUTH0_TEST_USER_EMAIL }}
           AUTH0_TEST_USER_PASSWORD: ${{ secrets.AUTH0_TEST_USER_PASSWORD }}
         run: make test-feature
 
+      - name: Upload Playwright artifacts
+        if: failure() && steps.feature-tests.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: tests/FootballPlanner.Feature.Tests/bin/Release/net10.0/playwright-videos/
+
       - name: Dump Docker Compose logs
-        if: always()
+        if: failure() && steps.feature-tests.outcome == 'failure'
         run: make logs
 
       - name: Stop Docker Compose stack

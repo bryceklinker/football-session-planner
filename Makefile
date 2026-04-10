@@ -1,18 +1,18 @@
 .PHONY: build test test-unit test-integration test-feature up down logs migration update-db
 
 build:
-	dotnet build FootballPlanner.slnx
+	dotnet build FootballPlanner.slnx --configuration Release
 
 test: test-unit test-integration
 
 test-unit:
-	dotnet test tests/FootballPlanner.Unit.Tests --configuration Release
+	dotnet test tests/FootballPlanner.Unit.Tests --configuration Release --logger trx
 
 test-integration:
-	dotnet test tests/FootballPlanner.Integration.Tests --configuration Release
+	dotnet test tests/FootballPlanner.Integration.Tests --configuration Release --logger trx
 
 test-feature:
-	dotnet test tests/FootballPlanner.Feature.Tests --configuration Release
+	dotnet test tests/FootballPlanner.Feature.Tests --configuration Release --logger trx
 
 up:
 	docker compose up -d
@@ -21,7 +21,7 @@ down:
 	docker compose down
 
 logs:
-	docker compose logs -f
+	docker compose logs --no-color
 
 migration:
 	@test -n "$(NAME)" || (echo "Usage: make migration NAME=<MigrationName>" && exit 1)

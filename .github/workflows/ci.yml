@@ -27,16 +27,16 @@ jobs:
         run: dotnet tool restore
 
       - name: Build
-        run: dotnet build FootballPlanner.slnx --no-restore --configuration Release
+        run: make build
 
       - name: Install Playwright browsers
         run: pwsh tests/FootballPlanner.Feature.Tests/bin/Release/net10.0/playwright.ps1 install chromium
 
       - name: Run unit tests
-        run: dotnet test tests/FootballPlanner.Unit.Tests --no-build --configuration Release --logger trx
+        run: make test-unit
 
       - name: Run integration tests
-        run: dotnet test tests/FootballPlanner.Integration.Tests --no-build --configuration Release --logger trx
+        run: make test-integration
 
       - name: Create .env for Docker Compose
         # Variable names match what docker-compose.yml expects:
@@ -52,22 +52,22 @@ jobs:
 
       - name: Start Docker Compose stack
         run: |
-          docker compose up -d
+          make up
           curl --retry 20 --retry-delay 5 --retry-all-errors -s http://localhost:4280/ > /dev/null
 
       - name: Run feature tests
         env:
           AUTH0_TEST_USER_EMAIL: ${{ secrets.AUTH0_TEST_USER_EMAIL }}
           AUTH0_TEST_USER_PASSWORD: ${{ secrets.AUTH0_TEST_USER_PASSWORD }}
-        run: dotnet test tests/FootballPlanner.Feature.Tests --no-build --configuration Release --logger trx
+        run: make test-feature
 
       - name: Dump Docker Compose logs
         if: always()
-        run: docker compose logs --no-color
+        run: make logs
 
       - name: Stop Docker Compose stack
         if: always()
-        run: docker compose down
+        run: make down
 
   pulumi-preview:
     runs-on: ubuntu-latest

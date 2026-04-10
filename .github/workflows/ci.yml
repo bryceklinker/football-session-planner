@@ -41,11 +41,13 @@ jobs:
       - name: Create .env for Docker Compose
         # Variable names match what docker-compose.yml expects:
         #   DB_PASSWORD      → SA_PASSWORD on the SQL Server container
-        #   AUTH0_DOMAIN     → Auth0__Domain on the API container
-        #   AUTH0_AUDIENCE   → Auth0__Audience on the API container
+        #   AUTH0_DOMAIN     → Auth0__Domain on the API container + SWA build arg
+        #   AUTH0_AUDIENCE   → Auth0__Audience on the API container + SWA build arg
+        #   AUTH0_CLIENT_ID  → SWA build arg (injected into Blazor appsettings.json)
         run: |
           echo "AUTH0_DOMAIN=${{ secrets.AUTH0_DOMAIN }}" >> .env
           echo "AUTH0_AUDIENCE=${{ secrets.AUTH0_DEV_AUDIENCE }}" >> .env
+          echo "AUTH0_CLIENT_ID=${{ secrets.AUTH0_CLIENT_ID }}" >> .env
           echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
 
       - name: Start Docker Compose stack

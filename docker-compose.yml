@@ -9,13 +9,18 @@ services:
     volumes:
       - sqldata:/var/opt/mssql
     healthcheck:
-      test:
-        - "CMD-SHELL"
-        - "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$$SA_PASSWORD\" -Q 'SELECT 1' -No || exit 1"
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P ${SA_PASSWORD} -Q 'SELECT 1' -b -o /dev/null || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 30s
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
 
   api:
     build:
@@ -30,9 +35,12 @@ services:
       AllowedOrigins: "http://localhost:4280"
       DOTNET_ENVIRONMENT: "Development"
       FUNCTIONS_WORKER_RUNTIME: "dotnet-isolated"
+      AzureWebJobsStorage: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tiko1Y5vSRu4s6C8eKg==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;TableEndpoint=http://azurite:10002/devstoreaccount1;"
     depends_on:
       db:
         condition: service_healthy
+      azurite:
+        condition: service_started
 
   swa:
     build:

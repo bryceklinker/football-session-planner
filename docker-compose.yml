@@ -22,6 +22,17 @@ services:
       - "10001:10001"
       - "10002:10002"
 
+  migrate:
+    build:
+      context: .
+      dockerfile: src/FootballPlanner.Migrations/Dockerfile
+    environment:
+      ConnectionStrings__DefaultConnection: "Server=tcp:db,1433;Database=FootballPlanner;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=True"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build:
       context: .
@@ -37,8 +48,8 @@ services:
       FUNCTIONS_WORKER_RUNTIME: "dotnet-isolated"
       AzureWebJobsStorage: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tiko1Y5vSRu4s6C8eKg==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;TableEndpoint=http://azurite:10002/devstoreaccount1;"
     depends_on:
-      db:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       azurite:
         condition: service_started
 

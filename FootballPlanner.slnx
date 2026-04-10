@@ -4,7 +4,21 @@
       <File Path="docker-compose.yml" />
       <File Path=".env.example" />
     </Files>
+    <File Path=".env.example" />
+    <File Path=".env.test.example" />
+    <File Path="AGENTS.md" />
+    <File Path="CLAUDE.md" />
+    <File Path="docker-compose.yml" />
     <File Path="global.json" />
+  </Folder>
+  <Folder Name="/.github/" />
+  <Folder Name="/.github/actions/" />
+  <Folder Name="/.github/actions/ensure-pulumi-state/">
+    <File Path=".github\actions\ensure-pulumi-state\action.yml" />
+  </Folder>
+  <Folder Name="/.github/workflows/">
+    <File Path=".github\workflows\ci.yml" />
+    <File Path=".github\workflows\deploy.yml" />
   </Folder>
   <Folder Name="/.scm/">
     <File Path=".gitignore" />
@@ -17,6 +31,7 @@
     <Project Path="src/FootballPlanner.Application/FootballPlanner.Application.csproj" />
     <Project Path="src/FootballPlanner.Domain/FootballPlanner.Domain.csproj" />
     <Project Path="src/FootballPlanner.Infrastructure/FootballPlanner.Infrastructure.csproj" />
+    <Project Path="src/FootballPlanner.Migrations/FootballPlanner.Migrations.csproj" />
     <Project Path="src/FootballPlanner.Web/FootballPlanner.Web.csproj" />
   </Folder>
   <Folder Name="/tests/">

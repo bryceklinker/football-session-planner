@@ -19,7 +19,7 @@ runs:
   using: composite
   steps:
     - name: Azure Login
-      uses: azure/login@v2
+      uses: azure/login@v3
       with:
         client-id: ${{ inputs.client_id }}
         client-secret: ${{ inputs.client_secret }}

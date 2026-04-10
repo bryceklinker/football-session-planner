@@ -21,9 +21,6 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app/publish /home/site/wwwroot
-# Remove the SDK-generated local.settings.json so func start reads
-# AzureWebJobsStorage and other settings from environment variables instead.
-RUN rm -f /home/site/wwwroot/local.settings.json
 WORKDIR /home/site/wwwroot
 EXPOSE 7071
 

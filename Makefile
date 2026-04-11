@@ -15,7 +15,7 @@ test-feature:
 	dotnet test tests/FootballPlanner.Feature.Tests --configuration Release --logger trx
 
 up:
-	docker compose up -d
+	docker compose up -d --build
 
 down:
 	docker compose down

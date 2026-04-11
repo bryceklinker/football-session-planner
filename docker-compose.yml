@@ -1,6 +1,7 @@
 services:
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
     environment:
       SA_PASSWORD: "${DB_PASSWORD}"
       ACCEPT_EULA: "Y"
@@ -17,12 +18,14 @@ services:
 
   azurite:
     image: mcr.microsoft.com/azure-storage/azurite
+    platform: linux/amd64
     ports:
       - "10000:10000"
       - "10001:10001"
       - "10002:10002"
 
   migrate:
+    platform: linux/amd64
     build:
       context: .
       dockerfile: src/FootballPlanner.Migrations/Dockerfile
@@ -34,6 +37,7 @@ services:
     restart: "no"
 
   api:
+    platform: linux/amd64
     build:
       context: .
       dockerfile: src/FootballPlanner.Api/Dockerfile
@@ -54,6 +58,7 @@ services:
         condition: service_started
 
   swa:
+    platform: linux/amd64
     build:
       context: .
       dockerfile: src/FootballPlanner.Web/Dockerfile

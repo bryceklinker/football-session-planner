@@ -35,8 +35,8 @@ else
                                     @session.Date.ToString("MMM d") &bull; @TotalDuration(session) min
                                 </MudText>
                                 <MudMenu Icon="@Icons.Material.Filled.MoreVert" Dense="true" Size="Size.Small">
-                                    <MudMenuItem OnClick="() => OpenEditDialog(session)">Edit Details</MudMenuItem>
-                                    <MudMenuItem OnClick="() => ConfirmDelete(session)">Delete</MudMenuItem>
+                                    <MudMenuItem OnClick="async () => await OpenEditDialog(session)">Edit Details</MudMenuItem>
+                                    <MudMenuItem OnClick="async () => await ConfirmDelete(session)">Delete</MudMenuItem>
                                     <MudMenuItem OnClick="@(() => Nav.NavigateTo($"/sessions/{session.Id}/run"))">Run Session</MudMenuItem>
                                 </MudMenu>
                             </div>

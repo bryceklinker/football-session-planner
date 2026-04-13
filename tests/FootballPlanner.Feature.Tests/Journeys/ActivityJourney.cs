@@ -12,10 +12,11 @@ public class ActivityJourney(IPage page)
         await page.GotoAsync($"{FeatureTestFixture.BaseUrl}/activities");
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
-        await page.GetByPlaceholder("Name").FillAsync(input.Name);
-        await page.GetByPlaceholder("Description").FillAsync(input.Description);
-        await page.GetByPlaceholder("Duration (mins)").FillAsync(input.EstimatedDurationMinutes.ToString());
-        await page.GetByRole(AriaRole.Button, new() { Name = "Add" }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "New Activity" }).ClickAsync();
+        await page.GetByLabel("Name").FillAsync(input.Name);
+        await page.GetByLabel("Description").FillAsync(input.Description);
+        await page.GetByLabel("Duration (min)").FillAsync(input.EstimatedDurationMinutes.ToString());
+        await page.GetByRole(AriaRole.Button, new() { Name = "Save" }).ClickAsync();
 
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
     }

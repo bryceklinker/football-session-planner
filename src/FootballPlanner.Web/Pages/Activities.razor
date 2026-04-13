@@ -1,130 +1,158 @@
 @page "/activities"
 @inject Services.ApiClient Api
+@inject IJSRuntime JS
 
-<h1>Activity Library</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Activity Library</MudText>
 
-@if (editingId == null)
-{
-    <div>
-        <input @bind="newName" placeholder="Name" />
-        <textarea @bind="newDescription" placeholder="Description"></textarea>
-        <input @bind="newInspirationUrl" placeholder="Inspiration URL (optional)" />
-        <input @bind="newEstimatedDuration" type="number" placeholder="Duration (mins)" />
-        <button @onclick="AddActivity">Add</button>
-    </div>
-
-    @if (activities == null)
-    {
-        <p>Loading...</p>
-    }
-    else
-    {
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Description</th>
-                    <th>Duration</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var activity in activities)
-                {
-                    <tr>
-                        <td>@activity.Name</td>
-                        <td>@activity.Description</td>
-                        <td>@activity.EstimatedDuration min</td>
-                        <td>
-                            <button @onclick="() => StartEdit(activity)">Edit</button>
-                            <button @onclick="() => DeleteActivity(activity.Id)">Delete</button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
-}
-else
-{
-    <h2>Edit Activity</h2>
-    <input @bind="editName" placeholder="Name" />
-    <textarea @bind="editDescription" placeholder="Description"></textarea>
-    <input @bind="editInspirationUrl" placeholder="Inspiration URL (optional)" />
-    <input @bind="editEstimatedDuration" type="number" placeholder="Duration (mins)" />
-    <button @onclick="SaveEdit">Save</button>
-    <button @onclick="CancelEdit">Cancel</button>
-}
+<MudGrid>
+    <MudItem xs="12" sm="4">
+        <MudPaper Class="pa-4" Elevation="1">
+            <div class="d-flex justify-space-between align-center mb-3">
+                <MudText Typo="Typo.h6">All Activities</MudText>
+                <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small"
+                        OnClick="CreateNew" aria-label="New Activity" />
+            </div>
+            <MudTextField @bind-Value="_search" Label="Search" Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined"
+                          Class="mb-3" Immediate="true" />
+            @if (_activities == null)
+            {
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            }
+            else
+            {
+                <MudList T="object" Dense="true">
+                    @foreach (var activity in FilteredActivities)
+                    {
+                        <MudListItem T="object" OnClick="() => SelectActivity(activity)"
+                                     Class="@(_selectedId == activity.Id ? "mud-selected-item" : "")">
+                            <div>
+                                <MudText Typo="Typo.body2">@activity.Name</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@activity.EstimatedDuration min</MudText>
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="8">
+        @if (_selectedId != null || _isCreating)
+        {
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.h6" Class="mb-4">@(_isCreating ? "New Activity" : "Edit Activity")</MudText>
+                <MudTextField @bind-Value="_editName" Label="Name" Variant="Variant.Outlined" Class="mb-3" />
+                <MudTextField @bind-Value="_editDescription" Label="Description" Variant="Variant.Outlined"
+                              Lines="3" Class="mb-3" />
+                <MudTextField @bind-Value="_editInspirationUrl" Label="Inspiration URL" Variant="Variant.Outlined"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@Icons.Material.Filled.OpenInNew"
+                              OnAdornmentClick="OpenInspirationUrl"
+                              Class="mb-3" />
+                <MudNumericField @bind-Value="_editDuration" Label="Duration (min)" Variant="Variant.Outlined"
+                                 Min="1" Class="mb-3" />
+                <MudPaper Outlined="true" Class="pa-4 mb-3 d-flex align-center justify-center"
+                          Style="min-height:80px; cursor:default;">
+                    <MudText Color="Color.Secondary">🏟️ Pitch diagram builder (coming soon)</MudText>
+                </MudPaper>
+                <div class="d-flex gap-2">
+                    <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
+                    @if (!_isCreating)
+                    {
+                        <MudButton Color="Color.Error" Variant="Variant.Outlined" OnClick="Delete">Delete</MudButton>
+                    }
+                    <MudButton Variant="Variant.Text" OnClick="Cancel">Cancel</MudButton>
+                </div>
+            </MudPaper>
+        }
+        else
+        {
+            <MudPaper Class="pa-4 d-flex align-center justify-center mud-height-full" Elevation="0">
+                <MudText Color="Color.Secondary">Select an activity to edit, or click + to create one</MudText>
+            </MudPaper>
+        }
+    </MudItem>
+</MudGrid>
 
 @code {
-    private List<Services.ApiClient.ActivityDto>? activities;
+    private List<Services.ApiClient.ActivityDto>? _activities;
+    private int? _selectedId;
+    private bool _isCreating;
+    private string _search = string.Empty;
 
-    // Create form state
-    private string newName = string.Empty;
-    private string newDescription = string.Empty;
-    private string newInspirationUrl = string.Empty;
-    private int newEstimatedDuration = 30;
+    private string _editName = string.Empty;
+    private string _editDescription = string.Empty;
+    private string _editInspirationUrl = string.Empty;
+    private int _editDuration = 30;
 
-    // Edit form state
-    private int? editingId;
-    private string editName = string.Empty;
-    private string editDescription = string.Empty;
-    private string editInspirationUrl = string.Empty;
-    private int editEstimatedDuration = 30;
+    private IEnumerable<Services.ApiClient.ActivityDto> FilteredActivities =>
+        _activities?.Where(a => string.IsNullOrWhiteSpace(_search) ||
+            a.Name.Contains(_search, StringComparison.OrdinalIgnoreCase)) ?? [];
 
     protected override async Task OnInitializedAsync()
     {
-        activities = await Api.GetActivitiesAsync();
+        _activities = await Api.GetActivitiesAsync();
     }
 
-    private async Task AddActivity()
+    private void CreateNew()
     {
-        if (string.IsNullOrWhiteSpace(newName)) return;
-        await Api.CreateActivityAsync(new Services.ApiClient.CreateActivityRequest(
-            newName,
-            newDescription,
-            string.IsNullOrWhiteSpace(newInspirationUrl) ? null : newInspirationUrl,
-            newEstimatedDuration));
-        activities = await Api.GetActivitiesAsync();
-        newName = string.Empty;
-        newDescription = string.Empty;
-        newInspirationUrl = string.Empty;
-        newEstimatedDuration = 30;
+        _isCreating = true;
+        _selectedId = null;
+        _editName = string.Empty;
+        _editDescription = string.Empty;
+        _editInspirationUrl = string.Empty;
+        _editDuration = 30;
     }
 
-    private void StartEdit(Services.ApiClient.ActivityDto activity)
+    private void SelectActivity(Services.ApiClient.ActivityDto activity)
     {
-        editingId = activity.Id;
-        editName = activity.Name;
-        editDescription = activity.Description;
-        editInspirationUrl = activity.InspirationUrl ?? string.Empty;
-        editEstimatedDuration = activity.EstimatedDuration;
+        _isCreating = false;
+        _selectedId = activity.Id;
+        _editName = activity.Name;
+        _editDescription = activity.Description;
+        _editInspirationUrl = activity.InspirationUrl ?? string.Empty;
+        _editDuration = activity.EstimatedDuration;
     }
 
-    private async Task SaveEdit()
+    private async Task Save()
     {
-        if (editingId == null || string.IsNullOrWhiteSpace(editName)) return;
-        await Api.UpdateActivityAsync(editingId.Value, new Services.ApiClient.UpdateActivityRequest(
-            editName,
-            editDescription,
-            string.IsNullOrWhiteSpace(editInspirationUrl) ? null : editInspirationUrl,
-            editEstimatedDuration));
-        activities = await Api.GetActivitiesAsync();
-        CancelEdit();
+        if (string.IsNullOrWhiteSpace(_editName)) return;
+        var url = string.IsNullOrWhiteSpace(_editInspirationUrl) ? null : _editInspirationUrl;
+        if (_isCreating)
+        {
+            await Api.CreateActivityAsync(new Services.ApiClient.CreateActivityRequest(
+                _editName, _editDescription, url, _editDuration));
+        }
+        else if (_selectedId != null)
+        {
+            await Api.UpdateActivityAsync(_selectedId.Value,
+                new Services.ApiClient.UpdateActivityRequest(_editName, _editDescription, url, _editDuration));
+        }
+        _activities = await Api.GetActivitiesAsync();
+        Cancel();
     }
 
-    private void CancelEdit()
+    private async Task Delete()
     {
-        editingId = null;
-        editName = string.Empty;
-        editDescription = string.Empty;
-        editInspirationUrl = string.Empty;
-        editEstimatedDuration = 30;
+        if (_selectedId == null) return;
+        await Api.DeleteActivityAsync(_selectedId.Value);
+        _activities = await Api.GetActivitiesAsync();
+        Cancel();
     }
 
-    private async Task DeleteActivity(int id)
+    private void Cancel()
     {
-        await Api.DeleteActivityAsync(id);
-        activities = await Api.GetActivitiesAsync();
+        _selectedId = null;
+        _isCreating = false;
+        _editName = string.Empty;
+        _editDescription = string.Empty;
+        _editInspirationUrl = string.Empty;
+        _editDuration = 30;
+    }
+
+    private async Task OpenInspirationUrl()
+    {
+        if (!string.IsNullOrWhiteSpace(_editInspirationUrl))
+            await JS.InvokeVoidAsync("open", _editInspirationUrl, "_blank");
     }
 }

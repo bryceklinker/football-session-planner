@@ -1,61 +1,117 @@
 @page "/phases"
 @inject Services.ApiClient Api
 
-<h1>Phases</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Phases</MudText>
 
-<div>
-    <input @bind="newPhaseName" placeholder="Phase name" />
-    <input @bind="newPhaseOrder" type="number" placeholder="Order" />
-    <button @onclick="AddPhase">Add</button>
-</div>
-
-@if (phases == null)
-{
-    <p>Loading...</p>
-}
-else
-{
-    <table>
-        <thead>
-            <tr><th>Order</th><th>Name</th><th></th></tr>
-        </thead>
-        <tbody>
-            @foreach (var phase in phases.OrderBy(p => p.Order))
+<MudGrid>
+    <MudItem xs="12" sm="4">
+        <MudPaper Class="pa-4" Elevation="1">
+            <div class="d-flex justify-space-between align-center mb-3">
+                <MudText Typo="Typo.h6">All Phases</MudText>
+                <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small"
+                        OnClick="CreateNew" aria-label="New Phase" />
+            </div>
+            @if (_phases == null)
             {
-                <tr>
-                    <td>@phase.Order</td>
-                    <td>@phase.Name</td>
-                    <td>
-                        <button @onclick="() => DeletePhase(phase.Id)">Delete</button>
-                    </td>
-                </tr>
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
             }
-        </tbody>
-    </table>
-}
+            else
+            {
+                <MudList T="object" Dense="true">
+                    @foreach (var phase in _phases.OrderBy(p => p.Order))
+                    {
+                        <MudListItem T="object" OnClick="() => SelectPhase(phase)"
+                                     Class="@(_selectedId == phase.Id ? "mud-selected-item" : "")">
+                            @phase.Order. @phase.Name
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="8">
+        @if (_selectedId != null || _isCreating)
+        {
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.h6" Class="mb-4">@(_isCreating ? "New Phase" : "Edit Phase")</MudText>
+                <MudTextField @bind-Value="_editName" Label="Name" Variant="Variant.Outlined" Class="mb-3" />
+                <MudNumericField @bind-Value="_editOrder" Label="Order" Variant="Variant.Outlined" Min="1" Class="mb-3" />
+                <div class="d-flex gap-2">
+                    <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
+                    @if (!_isCreating)
+                    {
+                        <MudButton Color="Color.Error" Variant="Variant.Outlined" OnClick="Delete">Delete</MudButton>
+                    }
+                    <MudButton Variant="Variant.Text" OnClick="Cancel">Cancel</MudButton>
+                </div>
+            </MudPaper>
+        }
+        else
+        {
+            <MudPaper Class="pa-4 d-flex align-center justify-center mud-height-full" Elevation="0">
+                <MudText Color="Color.Secondary">Select a phase to edit, or click + to create one</MudText>
+            </MudPaper>
+        }
+    </MudItem>
+</MudGrid>
 
 @code {
-    private List<Services.ApiClient.PhaseDto>? phases;
-    private string newPhaseName = string.Empty;
-    private int newPhaseOrder = 1;
+    private List<Services.ApiClient.PhaseDto>? _phases;
+    private int? _selectedId;
+    private bool _isCreating;
+    private string _editName = string.Empty;
+    private int _editOrder = 1;
 
     protected override async Task OnInitializedAsync()
     {
-        phases = await Api.GetPhasesAsync();
+        _phases = await Api.GetPhasesAsync();
     }
 
-    private async Task AddPhase()
+    private void CreateNew()
     {
-        if (string.IsNullOrWhiteSpace(newPhaseName)) return;
-        await Api.CreatePhaseAsync(new Services.ApiClient.CreatePhaseRequest(newPhaseName, newPhaseOrder));
-        phases = await Api.GetPhasesAsync();
-        newPhaseName = string.Empty;
-        newPhaseOrder = 1;
+        _isCreating = true;
+        _selectedId = null;
+        _editName = string.Empty;
+        _editOrder = (_phases?.Count ?? 0) + 1;
     }
 
-    private async Task DeletePhase(int id)
+    private void SelectPhase(Services.ApiClient.PhaseDto phase)
     {
-        await Api.DeletePhaseAsync(id);
-        phases = await Api.GetPhasesAsync();
+        _isCreating = false;
+        _selectedId = phase.Id;
+        _editName = phase.Name;
+        _editOrder = phase.Order;
+    }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_editName)) return;
+        if (_isCreating)
+        {
+            await Api.CreatePhaseAsync(new Services.ApiClient.CreatePhaseRequest(_editName, _editOrder));
+        }
+        else if (_selectedId != null)
+        {
+            await Api.UpdatePhaseAsync(_selectedId.Value,
+                new Services.ApiClient.UpdatePhaseRequest(_editName, _editOrder));
+        }
+        _phases = await Api.GetPhasesAsync();
+        Cancel();
+    }
+
+    private async Task Delete()
+    {
+        if (_selectedId == null) return;
+        await Api.DeletePhaseAsync(_selectedId.Value);
+        _phases = await Api.GetPhasesAsync();
+        Cancel();
+    }
+
+    private void Cancel()
+    {
+        _selectedId = null;
+        _isCreating = false;
+        _editName = string.Empty;
+        _editOrder = 1;
     }
 }

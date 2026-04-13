@@ -12,9 +12,10 @@ public class PhaseJourney(IPage page)
         await page.GotoAsync($"{FeatureTestFixture.BaseUrl}/phases");
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
-        await page.GetByPlaceholder("Phase name").FillAsync(input.Name);
-        await page.GetByPlaceholder("Order").FillAsync(input.Order.ToString());
-        await page.GetByRole(AriaRole.Button, new() { Name = "Add" }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "New Phase" }).ClickAsync();
+        await page.GetByLabel("Name").FillAsync(input.Name);
+        await page.GetByLabel("Order").FillAsync(input.Order.ToString());
+        await page.GetByRole(AriaRole.Button, new() { Name = "Save" }).ClickAsync();
 
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
     }

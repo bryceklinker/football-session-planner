@@ -31,8 +31,8 @@ public class ReorderSessionActivitiesCommandTests
         var (mediator, sessionId, sa1Id, sa2Id) = await SetupAsync();
 
         await mediator.Send(new ReorderSessionActivitiesCommand(sessionId, [
-            new ReorderItem(sa1Id, 2),
-            new ReorderItem(sa2Id, 1),
+            (sa1Id, 2),
+            (sa2Id, 1),
         ]));
 
         var session = await mediator.Send(new GetSessionByIdQuery(sessionId));
@@ -50,5 +50,16 @@ public class ReorderSessionActivitiesCommandTests
 
         await Assert.ThrowsAsync<FluentValidation.ValidationException>(
             () => mediator.Send(new ReorderSessionActivitiesCommand(1, [])));
+    }
+
+    [Fact]
+    public async Task Send_ThrowsKeyNotFoundException_WhenSessionActivityNotFound()
+    {
+        var mediator = TestServiceProvider.CreateMediator();
+
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => mediator.Send(new ReorderSessionActivitiesCommand(1, [
+                (99999, 1),
+            ])));
     }
 }

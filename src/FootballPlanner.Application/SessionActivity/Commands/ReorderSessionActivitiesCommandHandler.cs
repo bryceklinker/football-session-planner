@@ -14,10 +14,11 @@ public class ReorderSessionActivitiesCommandHandler(AppDbContext db)
             .Where(sa => sa.SessionId == request.SessionId)
             .ToListAsync(cancellationToken);
 
-        foreach (var item in request.Items)
+        foreach (var (sessionActivityId, displayOrder) in request.Items)
         {
-            var sa = sessionActivities.FirstOrDefault(a => a.Id == item.SessionActivityId);
-            sa?.UpdateDisplayOrder(item.DisplayOrder);
+            var sa = sessionActivities.FirstOrDefault(a => a.Id == sessionActivityId)
+                ?? throw new KeyNotFoundException($"SessionActivity {sessionActivityId} not found.");
+            sa.UpdateDisplayOrder(displayOrder);
         }
 
         await db.SaveChangesAsync(cancellationToken);

@@ -119,7 +119,7 @@ public class SessionFunctions(IMediator mediator)
         var body = await req.ReadFromJsonAsync<ReorderActivitiesRequest>()
             ?? throw new InvalidOperationException("Invalid request body.");
         await mediator.Send(new ReorderSessionActivitiesCommand(id,
-            body.Items.Select(i => new ReorderItem(i.SessionActivityId, i.DisplayOrder)).ToList()));
+            body.Items.Select(i => (i.SessionActivityId, i.DisplayOrder)).ToList()));
         return req.CreateResponse(HttpStatusCode.NoContent);
     }
 

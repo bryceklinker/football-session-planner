@@ -2,11 +2,11 @@ using Microsoft.Playwright;
 
 namespace FootballPlanner.Feature.Tests.Journeys;
 
-/// <param name="ActivityName">Name of the activity to select from the dropdown.</param>
-/// <param name="ActivityEstimatedDuration">Estimated duration used when the activity was created — needed to match the dropdown label "{name} ({duration} min)".</param>
-/// <param name="PhaseName">Phase to assign to this session activity.</param>
-/// <param name="FocusName">Focus to assign to this session activity.</param>
-/// <param name="SessionDuration">How long this activity will run in the session (may differ from estimated duration).</param>
+/// <param name="ActivityName">Name of the activity to select from the picker dialog.</param>
+/// <param name="ActivityEstimatedDuration">Not used in the new picker-based flow, kept for backwards compatibility.</param>
+/// <param name="PhaseName">Not used in the new picker-based flow; defaults are assigned automatically.</param>
+/// <param name="FocusName">Not used in the new picker-based flow; defaults are assigned automatically.</param>
+/// <param name="SessionDuration">Not used in the new picker-based flow; activity's estimated duration is used.</param>
 public record AddActivityInput(
     string ActivityName,
     int ActivityEstimatedDuration,
@@ -20,21 +20,14 @@ public class SessionEditorJourney(IPage page)
     {
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
-        // Activity dropdown option text is "{name} ({estimatedDuration} min)"
-        await page.Locator("select")
-            .Filter(new() { HasText = "-- Select Activity --" })
-            .SelectOptionAsync(new SelectOptionValue { Label = $"{input.ActivityName} ({input.ActivityEstimatedDuration} min)" });
-
-        await page.Locator("select")
-            .Filter(new() { HasText = "-- Select Phase --" })
-            .SelectOptionAsync(new SelectOptionValue { Label = input.PhaseName });
-
-        await page.Locator("select")
-            .Filter(new() { HasText = "-- Select Focus --" })
-            .SelectOptionAsync(new SelectOptionValue { Label = input.FocusName });
-
-        await page.GetByPlaceholder("Duration (mins)").FillAsync(input.SessionDuration.ToString());
         await page.GetByRole(AriaRole.Button, new() { Name = "Add Activity" }).ClickAsync();
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+
+        // Click the activity row in the dialog's list
+        await page.GetByRole(AriaRole.Dialog)
+            .Locator(".mud-list-item")
+            .Filter(new() { HasText = input.ActivityName })
+            .ClickAsync();
 
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
     }

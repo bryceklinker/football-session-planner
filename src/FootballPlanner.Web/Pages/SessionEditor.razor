@@ -1,134 +1,143 @@
 @page "/sessions/{Id:int}"
 @inject Services.ApiClient Api
+@inject NavigationManager Nav
+@inject IDialogService DialogService
 
-@if (session == null)
+@if (_session == null)
 {
-    <p>Loading...</p>
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
 }
 else
 {
-    <a href="/sessions">&larr; Back to Sessions</a>
+    <div class="d-flex align-center gap-2 mb-4 flex-wrap">
+        <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                       OnClick='() => Nav.NavigateTo("/sessions")' />
+        <MudText Typo="Typo.h5" Style="flex:1;min-width:120px;">@_session.Title</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            @_session.Date.ToString("MMM d, yyyy")
+        </MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Edit" title="Edit details"
+                       OnClick="OpenEditDialog" />
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   StartIcon="@Icons.Material.Filled.PlayArrow"
+                   OnClick='() => Nav.NavigateTo($"/sessions/{Id}/run")'>Run Session</MudButton>
+    </div>
 
-    @if (!editingSession)
-    {
-        <h1>@session.Title</h1>
-        <p>@session.Date.ToString("yyyy-MM-dd")</p>
-        @if (session.Notes != null) { <p>@session.Notes</p> }
-        <button @onclick="StartSessionEdit">Edit Details</button>
-    }
-    else
-    {
-        <h1>Edit Session</h1>
-        <input @bind="editTitle" placeholder="Title" />
-        <input @bind="editDate" type="date" />
-        <textarea @bind="editNotes" placeholder="Notes (optional)"></textarea>
-        <button @onclick="SaveSessionEdit">Save</button>
-        <button @onclick="CancelSessionEdit">Cancel</button>
-    }
-
-    <h2>Activities</h2>
-
-    @if (editingSessionActivityId == null)
-    {
-        @foreach (var sa in session.Activities)
-        {
-            <div style="border:1px solid #ccc; margin:8px; padding:8px;">
-                <strong>@(sa.Activity?.Name ?? "Unknown")</strong>
-                — @(sa.Phase?.Name ?? "") / @(sa.Focus?.Name ?? "")
-                — @sa.Duration min
-                @if (sa.Notes != null) { <div><em>@sa.Notes</em></div> }
-                @if (sa.KeyPoints.Count > 0)
+    <MudGrid>
+        <MudItem xs="12" sm="4">
+            <MudPaper Class="pa-3" Elevation="1">
+                <MudText Typo="Typo.h6" Class="mb-3">Activities</MudText>
+                @if (!_session.Activities.Any())
                 {
-                    <ul>
-                        @foreach (var kp in sa.KeyPoints)
-                        {
-                            <li>@kp.Text</li>
-                        }
-                    </ul>
+                    <MudText Color="Color.Secondary" Class="mb-3">
+                        No activities yet. Click + to add one.
+                    </MudText>
                 }
-                <button @onclick="() => StartActivityEdit(sa)">Edit</button>
-                <button @onclick="() => RemoveActivity(sa.Id)">Remove</button>
-            </div>
-        }
+                @foreach (var sa in _session.Activities.OrderBy(a => a.DisplayOrder))
+                {
+                    <MudPaper Class="@($"pa-2 mb-2 d-flex align-center gap-2{(_selectedActivityId == sa.Id ? " mud-theme-primary" : "")}")"
+                              Elevation="1">
+                        <div class="d-flex flex-column">
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.ArrowUpward"
+                                           Disabled="@IsFirst(sa)" OnClick="() => MoveUp(sa)" />
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.ArrowDownward"
+                                           Disabled="@IsLast(sa)" OnClick="() => MoveDown(sa)" />
+                        </div>
+                        <div class="flex-1" style="cursor:pointer;min-width:0;"
+                             @onclick="() => SelectActivity(sa)">
+                            <MudText Typo="Typo.body2" Style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                @(sa.Activity?.Name ?? "Unknown")
+                            </MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @(sa.Phase?.Name ?? "") &bull; @sa.Duration min
+                            </MudText>
+                        </div>
+                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error" OnClick="() => RemoveActivity(sa.Id)" />
+                    </MudPaper>
+                }
+                <div class="d-flex justify-center mt-2">
+                    <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+                            Size="Size.Small" OnClick="OpenActivityPicker"
+                            aria-label="Add Activity" />
+                </div>
+            </MudPaper>
+        </MudItem>
 
-        <h3>Add Activity</h3>
-        <select @bind="newActivityId">
-            <option value="0">-- Select Activity --</option>
-            @foreach (var a in allActivities ?? [])
+        <MudItem xs="12" sm="8">
+            @if (_selectedActivityId == null)
             {
-                <option value="@a.Id">@a.Name (@a.EstimatedDuration min)</option>
+                <MudPaper Class="pa-4 d-flex align-center justify-center" Elevation="0">
+                    <MudText Color="Color.Secondary">
+                        Select an activity to edit its details
+                    </MudText>
+                </MudPaper>
             }
-        </select>
-        <select @bind="newPhaseId">
-            <option value="0">-- Select Phase --</option>
-            @foreach (var p in allPhases ?? [])
+            else
             {
-                <option value="@p.Id">@p.Name</option>
+                <MudPaper Class="pa-4" Elevation="1">
+                    <MudText Typo="Typo.h6" Class="mb-4">@_selectedActivityName</MudText>
+                    <MudSelect T="int" Value="_editPhaseId"
+                               ValueChanged="async v => { _editPhaseId = v; await AutoSaveActivity(); }"
+                               Label="Phase" Variant="Variant.Outlined" Class="mb-3">
+                        @foreach (var phase in _allPhases ?? [])
+                        {
+                            <MudSelectItem T="int" Value="@phase.Id">@phase.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudSelect T="int" Value="_editFocusId"
+                               ValueChanged="async v => { _editFocusId = v; await AutoSaveActivity(); }"
+                               Label="Focus" Variant="Variant.Outlined" Class="mb-3">
+                        @foreach (var focus in _allFocuses ?? [])
+                        {
+                            <MudSelectItem T="int" Value="@focus.Id">@focus.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                    <MudNumericField T="int" Value="_editDuration"
+                                     ValueChanged="async v => { _editDuration = v; await AutoSaveActivity(); }"
+                                     Label="Duration (min)" Variant="Variant.Outlined"
+                                     Min="1" Class="mb-3" />
+
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Key Points</MudText>
+                    @for (int i = 0; i < _editKeyPoints.Count; i++)
+                    {
+                        var idx = i;
+                        <div class="d-flex align-center gap-2 mb-2">
+                            <MudTextField @bind-Value="_editKeyPoints[idx]"
+                                          Label="@($"Key Point {idx + 1}")"
+                                          Variant="Variant.Outlined" Style="flex:1"
+                                          OnBlur="AutoSaveKeyPoints" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete" Size="Size.Small"
+                                           OnClick="() => RemoveKeyPoint(idx)" />
+                        </div>
+                    }
+                    <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Add"
+                               OnClick="AddKeyPoint" Class="mb-3">Add Key Point</MudButton>
+
+                    <MudTextField @bind-Value="_editNotes" Label="Notes"
+                                  Variant="Variant.Outlined" Lines="3"
+                                  OnBlur="AutoSaveActivity" />
+                </MudPaper>
             }
-        </select>
-        <select @bind="newFocusId">
-            <option value="0">-- Select Focus --</option>
-            @foreach (var f in allFocuses ?? [])
-            {
-                <option value="@f.Id">@f.Name</option>
-            }
-        </select>
-        <input @bind="newDuration" type="number" placeholder="Duration (mins)" />
-        <textarea @bind="newActivityNotes" placeholder="Notes (optional)"></textarea>
-        <button @onclick="AddActivity">Add Activity</button>
-    }
-    else
-    {
-        <h3>Edit Activity</h3>
-        <select @bind="editPhaseId">
-            @foreach (var p in allPhases ?? [])
-            {
-                <option value="@p.Id">@p.Name</option>
-            }
-        </select>
-        <select @bind="editFocusId">
-            @foreach (var f in allFocuses ?? [])
-            {
-                <option value="@f.Id">@f.Name</option>
-            }
-        </select>
-        <input @bind="editDuration" type="number" placeholder="Duration (mins)" />
-        <textarea @bind="editActivityNotes" placeholder="Notes (optional)"></textarea>
-        <label>Key Points (one per line):</label>
-        <textarea @bind="editKeyPoints" rows="5" placeholder="One key point per line"></textarea>
-        <button @onclick="SaveActivityEdit">Save</button>
-        <button @onclick="CancelActivityEdit">Cancel</button>
-    }
+        </MudItem>
+    </MudGrid>
 }
 
 @code {
     [Parameter] public int Id { get; set; }
 
-    private Services.ApiClient.SessionDto? session;
-    private List<Services.ApiClient.ActivityDto>? allActivities;
-    private List<Services.ApiClient.PhaseDto>? allPhases;
-    private List<Services.ApiClient.FocusDto>? allFocuses;
+    private Services.ApiClient.SessionDto? _session;
+    private List<Services.ApiClient.ActivityDto>? _allActivities;
+    private List<Services.ApiClient.PhaseDto>? _allPhases;
+    private List<Services.ApiClient.FocusDto>? _allFocuses;
 
-    // Session edit state
-    private bool editingSession;
-    private string editTitle = string.Empty;
-    private DateTime editDate;
-    private string editNotes = string.Empty;
-
-    // Add activity form state
-    private int newActivityId;
-    private int newPhaseId;
-    private int newFocusId;
-    private int newDuration = 30;
-    private string newActivityNotes = string.Empty;
-
-    // Edit session activity state
-    private int? editingSessionActivityId;
-    private int editPhaseId;
-    private int editFocusId;
-    private int editDuration;
-    private string editActivityNotes = string.Empty;
-    private string editKeyPoints = string.Empty;
+    private int? _selectedActivityId;
+    private string? _selectedActivityName;
+    private int _editPhaseId;
+    private int _editFocusId;
+    private int _editDuration;
+    private string _editNotes = string.Empty;
+    private List<string> _editKeyPoints = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -137,85 +146,151 @@ else
 
     private async Task LoadAll()
     {
-        session = await Api.GetSessionAsync(Id);
-        allActivities = await Api.GetActivitiesAsync();
-        allPhases = await Api.GetPhasesAsync();
-        allFocuses = await Api.GetFocusesAsync();
+        _session = await Api.GetSessionAsync(Id);
+        _allActivities = await Api.GetActivitiesAsync();
+        _allPhases = await Api.GetPhasesAsync();
+        _allFocuses = await Api.GetFocusesAsync();
     }
 
-    private void StartSessionEdit()
+    private void SelectActivity(Services.ApiClient.SessionActivityDto sa)
     {
-        editingSession = true;
-        editTitle = session!.Title;
-        editDate = session.Date;
-        editNotes = session.Notes ?? string.Empty;
+        _selectedActivityId = sa.Id;
+        _selectedActivityName = sa.Activity?.Name;
+        _editPhaseId = sa.PhaseId;
+        _editFocusId = sa.FocusId;
+        _editDuration = sa.Duration;
+        _editNotes = sa.Notes ?? string.Empty;
+        _editKeyPoints = sa.KeyPoints.OrderBy(kp => kp.Order).Select(kp => kp.Text).ToList();
     }
 
-    private async Task SaveSessionEdit()
+    private bool IsFirst(Services.ApiClient.SessionActivityDto sa)
     {
-        if (string.IsNullOrWhiteSpace(editTitle)) return;
-        await Api.UpdateSessionAsync(Id, new Services.ApiClient.UpdateSessionRequest(
-            DateTime.SpecifyKind(editDate, DateTimeKind.Utc),
-            editTitle,
-            string.IsNullOrWhiteSpace(editNotes) ? null : editNotes));
-        session = await Api.GetSessionAsync(Id);
-        CancelSessionEdit();
+        var sorted = _session!.Activities.OrderBy(a => a.DisplayOrder).ToList();
+        return sorted.First().Id == sa.Id;
     }
 
-    private void CancelSessionEdit()
+    private bool IsLast(Services.ApiClient.SessionActivityDto sa)
     {
-        editingSession = false;
+        var sorted = _session!.Activities.OrderBy(a => a.DisplayOrder).ToList();
+        return sorted.Last().Id == sa.Id;
     }
 
-    private async Task AddActivity()
+    private async Task MoveUp(Services.ApiClient.SessionActivityDto sa)
     {
-        if (newActivityId == 0 || newPhaseId == 0 || newFocusId == 0 || newDuration <= 0) return;
-        await Api.AddSessionActivityAsync(Id, new Services.ApiClient.AddSessionActivityRequest(
-            newActivityId, newPhaseId, newFocusId, newDuration,
-            string.IsNullOrWhiteSpace(newActivityNotes) ? null : newActivityNotes));
-        session = await Api.GetSessionAsync(Id);
-        newActivityId = 0;
-        newPhaseId = 0;
-        newFocusId = 0;
-        newDuration = 30;
-        newActivityNotes = string.Empty;
+        var sorted = _session!.Activities.OrderBy(a => a.DisplayOrder).ToList();
+        var idx = sorted.FindIndex(a => a.Id == sa.Id);
+        if (idx == 0) return;
+
+        var above = sorted[idx - 1];
+        var items = sorted.Select(a =>
+        {
+            if (a.Id == sa.Id) return new Services.ApiClient.ReorderSessionActivityItem(a.Id, above.DisplayOrder);
+            if (a.Id == above.Id) return new Services.ApiClient.ReorderSessionActivityItem(a.Id, sa.DisplayOrder);
+            return new Services.ApiClient.ReorderSessionActivityItem(a.Id, a.DisplayOrder);
+        }).ToList();
+
+        await Api.ReorderSessionActivitiesAsync(Id, items);
+        _session = await Api.GetSessionAsync(Id);
     }
 
-    private void StartActivityEdit(Services.ApiClient.SessionActivityDto sa)
+    private async Task MoveDown(Services.ApiClient.SessionActivityDto sa)
     {
-        editingSessionActivityId = sa.Id;
-        editPhaseId = sa.PhaseId;
-        editFocusId = sa.FocusId;
-        editDuration = sa.Duration;
-        editActivityNotes = sa.Notes ?? string.Empty;
-        editKeyPoints = string.Join("\n", sa.KeyPoints.OrderBy(kp => kp.Order).Select(kp => kp.Text));
-    }
+        var sorted = _session!.Activities.OrderBy(a => a.DisplayOrder).ToList();
+        var idx = sorted.FindIndex(a => a.Id == sa.Id);
+        if (idx == sorted.Count - 1) return;
 
-    private async Task SaveActivityEdit()
-    {
-        if (editingSessionActivityId == null) return;
-        await Api.UpdateSessionActivityAsync(Id, editingSessionActivityId.Value,
-            new Services.ApiClient.UpdateSessionActivityRequest(
-                editPhaseId, editFocusId, editDuration,
-                string.IsNullOrWhiteSpace(editActivityNotes) ? null : editActivityNotes));
-        var keyPointLines = editKeyPoints
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .ToList();
-        await Api.UpdateSessionActivityKeyPointsAsync(Id, editingSessionActivityId.Value, keyPointLines);
-        session = await Api.GetSessionAsync(Id);
-        CancelActivityEdit();
-    }
+        var below = sorted[idx + 1];
+        var items = sorted.Select(a =>
+        {
+            if (a.Id == sa.Id) return new Services.ApiClient.ReorderSessionActivityItem(a.Id, below.DisplayOrder);
+            if (a.Id == below.Id) return new Services.ApiClient.ReorderSessionActivityItem(a.Id, sa.DisplayOrder);
+            return new Services.ApiClient.ReorderSessionActivityItem(a.Id, a.DisplayOrder);
+        }).ToList();
 
-    private void CancelActivityEdit()
-    {
-        editingSessionActivityId = null;
-        editActivityNotes = string.Empty;
-        editKeyPoints = string.Empty;
+        await Api.ReorderSessionActivitiesAsync(Id, items);
+        _session = await Api.GetSessionAsync(Id);
     }
 
     private async Task RemoveActivity(int sessionActivityId)
     {
         await Api.RemoveSessionActivityAsync(Id, sessionActivityId);
-        session = await Api.GetSessionAsync(Id);
+        if (_selectedActivityId == sessionActivityId)
+        {
+            _selectedActivityId = null;
+            _selectedActivityName = null;
+        }
+        _session = await Api.GetSessionAsync(Id);
+    }
+
+    private async Task OpenActivityPicker()
+    {
+        var parameters = new DialogParameters<Dialogs.ActivityPickerDialog>
+        {
+            { x => x.Activities, _allActivities ?? [] }
+        };
+        var dialog = await DialogService.ShowAsync<Dialogs.ActivityPickerDialog>("Add Activity", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            var activity = (Services.ApiClient.ActivityDto)result.Data!;
+            var firstPhase = (_allPhases ?? []).MinBy(p => p.Order);
+            var firstFocus = (_allFocuses ?? []).FirstOrDefault();
+            if (firstPhase == null || firstFocus == null) return;
+            await Api.AddSessionActivityAsync(Id, new Services.ApiClient.AddSessionActivityRequest(
+                activity.Id, firstPhase.Id, firstFocus.Id, activity.EstimatedDuration, null));
+            _session = await Api.GetSessionAsync(Id);
+        }
+    }
+
+    private async Task OpenEditDialog()
+    {
+        if (_session == null) return;
+        var parameters = new DialogParameters<Dialogs.SessionDetailsDialog>
+        {
+            { x => x.IsEditing, true },
+            { x => x.InitialDate, _session.Date },
+            { x => x.InitialTitle, _session.Title },
+            { x => x.InitialNotes, _session.Notes ?? string.Empty },
+        };
+        var dialog = await DialogService.ShowAsync<Dialogs.SessionDetailsDialog>("Edit Session", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            var data = (Dialogs.SessionDetailsDialog.SessionDetailsResult)result.Data!;
+            await Api.UpdateSessionAsync(Id, new Services.ApiClient.UpdateSessionRequest(
+                data.Date, data.Title, string.IsNullOrWhiteSpace(data.Notes) ? null : data.Notes));
+            _session = await Api.GetSessionAsync(Id);
+        }
+    }
+
+    private async Task AutoSaveActivity()
+    {
+        if (_selectedActivityId == null) return;
+        await Api.UpdateSessionActivityAsync(Id, _selectedActivityId.Value,
+            new Services.ApiClient.UpdateSessionActivityRequest(
+                _editPhaseId, _editFocusId, _editDuration,
+                string.IsNullOrWhiteSpace(_editNotes) ? null : _editNotes));
+        _session = await Api.GetSessionAsync(Id);
+    }
+
+    private async Task AutoSaveKeyPoints()
+    {
+        if (_selectedActivityId == null) return;
+        var keyPoints = _editKeyPoints
+            .Where(kp => !string.IsNullOrWhiteSpace(kp))
+            .ToList();
+        await Api.UpdateSessionActivityKeyPointsAsync(Id, _selectedActivityId.Value, keyPoints);
+        _session = await Api.GetSessionAsync(Id);
+    }
+
+    private void AddKeyPoint()
+    {
+        _editKeyPoints.Add(string.Empty);
+    }
+
+    private async Task RemoveKeyPoint(int index)
+    {
+        _editKeyPoints.RemoveAt(index);
+        await AutoSaveKeyPoints();
     }
 }

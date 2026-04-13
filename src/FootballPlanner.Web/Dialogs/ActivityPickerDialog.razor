@@ -1,0 +1,49 @@
+<MudDialog Style="min-width:420px;">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Add Activity</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_search" Label="Search activities" Adornment="Adornment.Start"
+                      AdornmentIcon="@Icons.Material.Filled.Search" Variant="Variant.Outlined"
+                      Class="mb-3" Immediate="true" />
+        @if (!FilteredActivities.Any())
+        {
+            <MudText Color="Color.Secondary">No activities match your search.</MudText>
+        }
+        else
+        {
+            <MudList T="object" Dense="true" Style="max-height:300px;overflow-y:auto;">
+                @foreach (var activity in FilteredActivities)
+                {
+                    <MudListItem T="object" OnClick="() => Select(activity)">
+                        <div class="d-flex align-center gap-3">
+                            <div style="width:40px;height:26px;background:#388e3c;border-radius:3px;flex-shrink:0;" />
+                            <div>
+                                <MudText Typo="Typo.body2">@activity.Name</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@activity.EstimatedDuration min</MudText>
+                            </div>
+                        </div>
+                    </MudListItem>
+                }
+            </MudList>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Cancel</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public List<Services.ApiClient.ActivityDto> Activities { get; set; } = [];
+
+    private string _search = string.Empty;
+
+    private IEnumerable<Services.ApiClient.ActivityDto> FilteredActivities =>
+        Activities.Where(a => string.IsNullOrWhiteSpace(_search) ||
+            a.Name.Contains(_search, StringComparison.OrdinalIgnoreCase));
+
+    private void Select(Services.ApiClient.ActivityDto activity) =>
+        MudDialog.Close(activity);
+}

@@ -13,11 +13,11 @@
         <AuthorizeView>
             <Authorized>
                 <MudIconButton Icon="@Icons.Material.Filled.Logout" Color="Color.Inherit"
-                               Href="authentication/logout" Title="Sign out" />
+                               Href="authentication/logout" title="Sign out" />
             </Authorized>
         </AuthorizeView>
     </MudAppBar>
-    <MudDrawer @bind-Open="_drawerOpen" Elevation="1" ClipMode="DrawerClipMode.Always">
+    <MudDrawer @bind-Open="_drawerOpen" Variant="DrawerVariant.Persistent" Elevation="1" ClipMode="DrawerClipMode.Always">
         <MudDrawerHeader>
             <MudText Typo="Typo.subtitle1" Class="mt-1 mud-text-secondary">Football Planner</MudText>
         </MudDrawerHeader>

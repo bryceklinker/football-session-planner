@@ -2,6 +2,7 @@
 @inject Services.ApiClient Api
 @inject NavigationManager Nav
 @inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 @if (_session == null)
 {
@@ -235,7 +236,11 @@ else
             var activity = (Services.ApiClient.ActivityDto)result.Data!;
             var firstPhase = (_allPhases ?? []).MinBy(p => p.Order);
             var firstFocus = (_allFocuses ?? []).FirstOrDefault();
-            if (firstPhase == null || firstFocus == null) return;
+            if (firstPhase == null || firstFocus == null)
+            {
+                Snackbar.Add("Please create at least one Phase and one Focus before adding activities.", Severity.Warning);
+                return;
+            }
             await Api.AddSessionActivityAsync(Id, new Services.ApiClient.AddSessionActivityRequest(
                 activity.Id, firstPhase.Id, firstFocus.Id, activity.EstimatedDuration, null));
             _session = await Api.GetSessionAsync(Id);
@@ -270,6 +275,10 @@ else
             new Services.ApiClient.UpdateSessionActivityRequest(
                 _editPhaseId, _editFocusId, _editDuration,
                 string.IsNullOrWhiteSpace(_editNotes) ? null : _editNotes));
+        var keyPoints = _editKeyPoints
+            .Where(kp => !string.IsNullOrWhiteSpace(kp))
+            .ToList();
+        await Api.UpdateSessionActivityKeyPointsAsync(Id, _selectedActivityId.Value, keyPoints);
         _session = await Api.GetSessionAsync(Id);
     }
 

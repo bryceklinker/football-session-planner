@@ -1,44 +1,14 @@
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="/sessions">Football Planner</a>
-        <button title="Navigation menu" class="navbar-toggler" @onclick="ToggleNavMenu">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-    </div>
-</div>
-
-<div class="@NavMenuCssClass nav-scrollable" @onclick="ToggleNavMenu">
-    <nav class="nav flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="sessions">
-                Sessions
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="phases">
-                Phases
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="focuses">
-                Focuses
-            </NavLink>
-        </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="activities">
-                Activities
-            </NavLink>
-        </div>
-    </nav>
-</div>
-
-@code {
-    private bool collapseNavMenu = true;
-
-    private string? NavMenuCssClass => collapseNavMenu ? "collapse" : null;
-
-    private void ToggleNavMenu()
-    {
-        collapseNavMenu = !collapseNavMenu;
-    }
-}
+<MudNavMenu>
+    <MudNavLink Href="sessions" Icon="@Icons.Material.Filled.CalendarMonth" Match="NavLinkMatch.Prefix">
+        Sessions
+    </MudNavLink>
+    <MudNavLink Href="activities" Icon="@Icons.Material.Filled.SportsSoccer" Match="NavLinkMatch.Prefix">
+        Activities
+    </MudNavLink>
+    <MudNavLink Href="phases" Icon="@Icons.Material.Filled.Layers" Match="NavLinkMatch.Prefix">
+        Phases
+    </MudNavLink>
+    <MudNavLink Href="focuses" Icon="@Icons.Material.Filled.TrackChanges" Match="NavLinkMatch.Prefix">
+        Focuses
+    </MudNavLink>
+</MudNavMenu>

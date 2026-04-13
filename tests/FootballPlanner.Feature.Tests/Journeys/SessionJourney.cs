@@ -12,9 +12,12 @@ public class SessionJourney(IPage page)
         await page.GotoAsync($"{FeatureTestFixture.BaseUrl}/sessions");
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
-        await page.Locator("input[type='date']").FillAsync(input.Date.ToString("yyyy-MM-dd"));
-        await page.GetByPlaceholder("Title").FillAsync(input.Title);
-        await page.GetByRole(AriaRole.Button, new() { Name = "Add Session" }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "New Session" }).ClickAsync();
+        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+
+        await page.GetByLabel("Title").FillAsync(input.Title);
+        await page.GetByLabel("Date").FillAsync(input.Date.ToString("MM/dd/yyyy"));
+        await page.GetByRole(AriaRole.Button, new() { Name = "Create" }).ClickAsync();
 
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
     }
@@ -24,8 +27,8 @@ public class SessionJourney(IPage page)
         await page.GotoAsync($"{FeatureTestFixture.BaseUrl}/sessions");
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
 
-        var row = page.Locator("tr").Filter(new() { HasText = title });
-        await row.GetByRole(AriaRole.Button, new() { Name = "Edit" }).ClickAsync();
+        var card = page.Locator(".mud-card").Filter(new() { HasText = title });
+        await card.GetByRole(AriaRole.Button, new() { Name = "Open" }).ClickAsync();
 
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
     }

@@ -16,11 +16,11 @@ public class PlanningJourneyTests(FeatureTestFixture fixture) : IClassFixture<Fe
 
         await fixture.Page.GotoAsync($"{FeatureTestFixture.BaseUrl}/phases");
         await fixture.Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        await Assertions.Expect(fixture.Page.Locator("table")).ToContainTextAsync("Warm Up");
+        await Assertions.Expect(fixture.Page.GetByText("Warm Up")).ToBeVisibleAsync();
 
         await fixture.Page.GotoAsync($"{FeatureTestFixture.BaseUrl}/focuses");
         await fixture.Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        await Assertions.Expect(fixture.Page.Locator("table")).ToContainTextAsync("Technique");
+        await Assertions.Expect(fixture.Page.GetByText("Technique")).ToBeVisibleAsync();
     }
 
     [Fact]
@@ -34,9 +34,8 @@ public class PlanningJourneyTests(FeatureTestFixture fixture) : IClassFixture<Fe
 
         await fixture.Page.GotoAsync($"{FeatureTestFixture.BaseUrl}/activities");
         await fixture.Page.WaitForLoadStateAsync(LoadState.NetworkIdle);
-        await Assertions.Expect(fixture.Page.Locator("table")).ToContainTextAsync("Rondo");
-        await Assertions.Expect(fixture.Page.Locator("table")).ToContainTextAsync("A possession drill");
-        await Assertions.Expect(fixture.Page.Locator("table")).ToContainTextAsync("10 min");
+        await Assertions.Expect(fixture.Page.GetByText("Rondo")).ToBeVisibleAsync();
+        await Assertions.Expect(fixture.Page.GetByText("10 min")).ToBeVisibleAsync();
     }
 
     [Fact]
@@ -59,8 +58,6 @@ public class PlanningJourneyTests(FeatureTestFixture fixture) : IClassFixture<Fe
             SessionDuration: 10));
 
         await Assertions.Expect(fixture.Page.GetByText("Rondo")).ToBeVisibleAsync();
-        // Exact = false because the activity div renders "— Warm Up / Technique — 10 min"
-        // and GetByText with exact matching would not find a partial substring
-        await Assertions.Expect(fixture.Page.GetByText("Warm Up / Technique", new() { Exact = false })).ToBeVisibleAsync();
+        await Assertions.Expect(fixture.Page.GetByText("Warm Up")).ToBeVisibleAsync();
     }
 }

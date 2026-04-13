@@ -1,123 +1,142 @@
 @page "/sessions"
 @inject Services.ApiClient Api
 @inject NavigationManager Nav
+@inject IDialogService DialogService
 
-<h1>Sessions</h1>
+<div class="d-flex justify-space-between align-center mb-4">
+    <MudText Typo="Typo.h4">Sessions</MudText>
+    <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small"
+            OnClick="OpenCreateDialog" aria-label="New Session" />
+</div>
 
-@if (editingId == null)
+@if (_sessions == null)
 {
-    <div>
-        <input @bind="newDate" type="date" />
-        <input @bind="newTitle" placeholder="Title" />
-        <textarea @bind="newNotes" placeholder="Notes (optional)"></textarea>
-        <button @onclick="AddSession">Add Session</button>
-    </div>
-
-    @if (sessions == null)
-    {
-        <p>Loading...</p>
-    }
-    else
-    {
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Title</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var session in sessions)
-                {
-                    <tr>
-                        <td>@session.Date.ToString("yyyy-MM-dd")</td>
-                        <td>@session.Title</td>
-                        <td>
-                            <button @onclick="() => NavigateToSession(session.Id)">Edit</button>
-                            <button @onclick="() => StartEdit(session)">Rename</button>
-                            <button @onclick="() => DeleteSession(session.Id)">Delete</button>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
-    }
+    <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+}
+else if (_sessions.Count == 0)
+{
+    <MudPaper Class="pa-8 d-flex align-center justify-center" Elevation="0">
+        <MudText Color="Color.Secondary">No sessions yet. Click + to create one.</MudText>
+    </MudPaper>
 }
 else
 {
-    <h2>Edit Session</h2>
-    <input @bind="editDate" type="date" />
-    <input @bind="editTitle" placeholder="Title" />
-    <textarea @bind="editNotes" placeholder="Notes (optional)"></textarea>
-    <button @onclick="SaveEdit">Save</button>
-    <button @onclick="CancelEdit">Cancel</button>
+    @foreach (var group in GroupedSessions)
+    {
+        <MudText Typo="Typo.subtitle1" Class="mb-2 mt-4 mud-text-secondary">@group.MonthKey</MudText>
+        <MudGrid>
+            @foreach (var session in group.Sessions)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Elevation="2">
+                        <MudCardContent>
+                            <div class="d-flex justify-space-between align-center mb-1">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @session.Date.ToString("MMM d") &bull; @TotalDuration(session) min
+                                </MudText>
+                                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Dense="true" Size="Size.Small">
+                                    <MudMenuItem OnClick="() => OpenEditDialog(session)">Edit Details</MudMenuItem>
+                                    <MudMenuItem OnClick="() => ConfirmDelete(session)">Delete</MudMenuItem>
+                                    <MudMenuItem OnClick="@(() => Nav.NavigateTo($"/sessions/{session.Id}/run"))">Run Session</MudMenuItem>
+                                </MudMenu>
+                            </div>
+                            <MudText Typo="Typo.h6" Class="mb-2">@session.Title</MudText>
+                            <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;min-height:34px;">
+                                @foreach (var sa in session.Activities.OrderBy(a => a.DisplayOrder))
+                                {
+                                    @if (sa.Activity?.DiagramJson != null)
+                                    {
+                                        <div style="flex-shrink:0;width:60px;height:38px;background:#388e3c;border-radius:4px;overflow:hidden;">
+                                            @((MarkupString)sa.Activity.DiagramJson)
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <MudChip T="string" Size="Size.Small"
+                                                 Style="flex-shrink:0;font-size:10px;"
+                                                 Color="Color.Default">
+                                            @(sa.Activity?.Name ?? "?")
+                                        </MudChip>
+                                    }
+                                }
+                            </div>
+                        </MudCardContent>
+                        <MudCardActions>
+                            <MudButton Variant="Variant.Text" Color="Color.Primary"
+                                       OnClick="@(() => Nav.NavigateTo($"/sessions/{session.Id}"))">Open</MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
 }
 
 @code {
-    private List<Services.ApiClient.SessionDto>? sessions;
-
-    private DateTime newDate = DateTime.Today;
-    private string newTitle = string.Empty;
-    private string newNotes = string.Empty;
-
-    private int? editingId;
-    private DateTime editDate;
-    private string editTitle = string.Empty;
-    private string editNotes = string.Empty;
+    private List<Services.ApiClient.SessionDto>? _sessions;
 
     protected override async Task OnInitializedAsync()
     {
-        sessions = await Api.GetSessionsAsync();
+        _sessions = await Api.GetSessionsAsync();
     }
 
-    private async Task AddSession()
+    private IEnumerable<(string MonthKey, List<Services.ApiClient.SessionDto> Sessions)> GroupedSessions =>
+        (_sessions ?? [])
+            .OrderByDescending(s => s.Date)
+            .GroupBy(s => s.Date.ToString("MMMM yyyy"))
+            .Select(g => (g.Key, g.OrderByDescending(s => s.Date).ToList()));
+
+    private static int TotalDuration(Services.ApiClient.SessionDto session) =>
+        session.Activities.Sum(a => a.Duration);
+
+    private async Task OpenCreateDialog()
     {
-        if (string.IsNullOrWhiteSpace(newTitle)) return;
-        await Api.CreateSessionAsync(new Services.ApiClient.CreateSessionRequest(
-            DateTime.SpecifyKind(newDate, DateTimeKind.Utc),
-            newTitle,
-            string.IsNullOrWhiteSpace(newNotes) ? null : newNotes));
-        sessions = await Api.GetSessionsAsync();
-        newTitle = string.Empty;
-        newNotes = string.Empty;
-        newDate = DateTime.Today;
+        var parameters = new DialogParameters<Dialogs.SessionDetailsDialog>
+        {
+            { x => x.IsEditing, false }
+        };
+        var dialog = await DialogService.ShowAsync<Dialogs.SessionDetailsDialog>("New Session", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            var data = (Dialogs.SessionDetailsDialog.SessionDetailsResult)result.Data!;
+            await Api.CreateSessionAsync(new Services.ApiClient.CreateSessionRequest(
+                data.Date, data.Title, string.IsNullOrWhiteSpace(data.Notes) ? null : data.Notes));
+            _sessions = await Api.GetSessionsAsync();
+        }
     }
 
-    private void StartEdit(Services.ApiClient.SessionDto session)
+    private async Task OpenEditDialog(Services.ApiClient.SessionDto session)
     {
-        editingId = session.Id;
-        editDate = session.Date;
-        editTitle = session.Title;
-        editNotes = session.Notes ?? string.Empty;
+        var parameters = new DialogParameters<Dialogs.SessionDetailsDialog>
+        {
+            { x => x.IsEditing, true },
+            { x => x.InitialDate, session.Date },
+            { x => x.InitialTitle, session.Title },
+            { x => x.InitialNotes, session.Notes ?? string.Empty },
+        };
+        var dialog = await DialogService.ShowAsync<Dialogs.SessionDetailsDialog>("Edit Session", parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            var data = (Dialogs.SessionDetailsDialog.SessionDetailsResult)result.Data!;
+            await Api.UpdateSessionAsync(session.Id, new Services.ApiClient.UpdateSessionRequest(
+                data.Date, data.Title, string.IsNullOrWhiteSpace(data.Notes) ? null : data.Notes));
+            _sessions = await Api.GetSessionsAsync();
+        }
     }
 
-    private async Task SaveEdit()
+    private async Task ConfirmDelete(Services.ApiClient.SessionDto session)
     {
-        if (editingId == null || string.IsNullOrWhiteSpace(editTitle)) return;
-        await Api.UpdateSessionAsync(editingId.Value, new Services.ApiClient.UpdateSessionRequest(
-            DateTime.SpecifyKind(editDate, DateTimeKind.Utc),
-            editTitle,
-            string.IsNullOrWhiteSpace(editNotes) ? null : editNotes));
-        sessions = await Api.GetSessionsAsync();
-        CancelEdit();
-    }
-
-    private void CancelEdit()
-    {
-        editingId = null;
-        editTitle = string.Empty;
-        editNotes = string.Empty;
-    }
-
-    private void NavigateToSession(int id)
-    {
-        Nav.NavigateTo($"/sessions/{id}");
-    }
-
-    private async Task DeleteSession(int id)
-    {
-        await Api.DeleteSessionAsync(id);
-        sessions = await Api.GetSessionsAsync();
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            "Delete Session",
+            $"Delete \"{session.Title}\"? This cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+        if (confirmed == true)
+        {
+            await Api.DeleteSessionAsync(session.Id);
+            _sessions = await Api.GetSessionsAsync();
+        }
     }
 }

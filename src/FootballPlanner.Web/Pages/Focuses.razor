@@ -1,57 +1,112 @@
 @page "/focuses"
 @inject Services.ApiClient Api
 
-<h1>Focuses</h1>
+<MudText Typo="Typo.h4" Class="mb-4">Focuses</MudText>
 
-<div>
-    <input @bind="newFocusName" placeholder="Focus name" />
-    <button @onclick="AddFocus">Add</button>
-</div>
-
-@if (focuses == null)
-{
-    <p>Loading...</p>
-}
-else
-{
-    <table>
-        <thead>
-            <tr><th>Name</th><th></th></tr>
-        </thead>
-        <tbody>
-            @foreach (var focus in focuses)
+<MudGrid>
+    <MudItem xs="12" sm="4">
+        <MudPaper Class="pa-4" Elevation="1">
+            <div class="d-flex justify-space-between align-center mb-3">
+                <MudText Typo="Typo.h6">All Focuses</MudText>
+                <MudFab Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Size="Size.Small"
+                        OnClick="CreateNew" aria-label="New Focus" />
+            </div>
+            @if (_focuses == null)
             {
-                <tr>
-                    <td>@focus.Name</td>
-                    <td>
-                        <button @onclick="() => DeleteFocus(focus.Id)">Delete</button>
-                    </td>
-                </tr>
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
             }
-        </tbody>
-    </table>
-}
+            else
+            {
+                <MudList T="object" Dense="true">
+                    @foreach (var focus in _focuses)
+                    {
+                        <MudListItem T="object" OnClick="() => SelectFocus(focus)"
+                                     Class="@(_selectedId == focus.Id ? "mud-selected-item" : "")">
+                            @focus.Name
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+        </MudPaper>
+    </MudItem>
+    <MudItem xs="12" sm="8">
+        @if (_selectedId != null || _isCreating)
+        {
+            <MudPaper Class="pa-4" Elevation="1">
+                <MudText Typo="Typo.h6" Class="mb-4">@(_isCreating ? "New Focus" : "Edit Focus")</MudText>
+                <MudTextField @bind-Value="_editName" Label="Name" Variant="Variant.Outlined" Class="mb-3" />
+                <div class="d-flex gap-2">
+                    <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
+                    @if (!_isCreating)
+                    {
+                        <MudButton Color="Color.Error" Variant="Variant.Outlined" OnClick="Delete">Delete</MudButton>
+                    }
+                    <MudButton Variant="Variant.Text" OnClick="Cancel">Cancel</MudButton>
+                </div>
+            </MudPaper>
+        }
+        else
+        {
+            <MudPaper Class="pa-4 d-flex align-center justify-center mud-height-full" Elevation="0">
+                <MudText Color="Color.Secondary">Select a focus to edit, or click + to create one</MudText>
+            </MudPaper>
+        }
+    </MudItem>
+</MudGrid>
 
 @code {
-    private List<Services.ApiClient.FocusDto>? focuses;
-    private string newFocusName = string.Empty;
+    private List<Services.ApiClient.FocusDto>? _focuses;
+    private int? _selectedId;
+    private bool _isCreating;
+    private string _editName = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
-        focuses = await Api.GetFocusesAsync();
+        _focuses = await Api.GetFocusesAsync();
     }
 
-    private async Task AddFocus()
+    private void CreateNew()
     {
-        if (string.IsNullOrWhiteSpace(newFocusName)) return;
-        await Api.CreateFocusAsync(new Services.ApiClient.CreateFocusRequest(newFocusName));
-        focuses = await Api.GetFocusesAsync();
-        newFocusName = string.Empty;
+        _isCreating = true;
+        _selectedId = null;
+        _editName = string.Empty;
     }
 
-    private async Task DeleteFocus(int id)
+    private void SelectFocus(Services.ApiClient.FocusDto focus)
     {
-        await Api.DeleteFocusAsync(id);
-        focuses = await Api.GetFocusesAsync();
+        _isCreating = false;
+        _selectedId = focus.Id;
+        _editName = focus.Name;
+    }
+
+    private async Task Save()
+    {
+        if (string.IsNullOrWhiteSpace(_editName)) return;
+        if (_isCreating)
+        {
+            await Api.CreateFocusAsync(new Services.ApiClient.CreateFocusRequest(_editName));
+        }
+        else if (_selectedId != null)
+        {
+            await Api.UpdateFocusAsync(_selectedId.Value,
+                new Services.ApiClient.UpdateFocusRequest(_editName));
+        }
+        _focuses = await Api.GetFocusesAsync();
+        Cancel();
+    }
+
+    private async Task Delete()
+    {
+        if (_selectedId == null) return;
+        await Api.DeleteFocusAsync(_selectedId.Value);
+        _focuses = await Api.GetFocusesAsync();
+        Cancel();
+    }
+
+    private void Cancel()
+    {
+        _selectedId = null;
+        _isCreating = false;
+        _editName = string.Empty;
     }
 }

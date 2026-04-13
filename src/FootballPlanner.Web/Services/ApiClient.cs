@@ -67,6 +67,9 @@ public class ApiClient(HttpClient http)
     public Task<HttpResponseMessage> UpdateSessionActivityKeyPointsAsync(int sessionId, int id, List<string> keyPoints) =>
         http.PutAsJsonAsync($"sessions/{sessionId}/activities/{id}/keypoints", new UpdateSessionActivityKeyPointsRequest(keyPoints));
 
+    public Task<HttpResponseMessage> ReorderSessionActivitiesAsync(int sessionId, List<ReorderSessionActivityItem> items) =>
+        http.PutAsJsonAsync($"sessions/{sessionId}/activities/reorder", new ReorderSessionActivitiesRequest(items));
+
     public record PhaseDto(int Id, string Name, int Order);
     public record FocusDto(int Id, string Name);
     public record ActivityDto(
@@ -93,4 +96,6 @@ public class ApiClient(HttpClient http)
     public record AddSessionActivityRequest(int ActivityId, int PhaseId, int FocusId, int Duration, string? Notes);
     public record UpdateSessionActivityRequest(int PhaseId, int FocusId, int Duration, string? Notes);
     public record UpdateSessionActivityKeyPointsRequest(List<string> KeyPoints);
+    public record ReorderSessionActivityItem(int SessionActivityId, int DisplayOrder);
+    private record ReorderSessionActivitiesRequest(List<ReorderSessionActivityItem> Items);
 }

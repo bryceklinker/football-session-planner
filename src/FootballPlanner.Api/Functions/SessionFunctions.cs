@@ -111,8 +111,22 @@ public class SessionFunctions(IMediator mediator)
         return req.CreateResponse(HttpStatusCode.NoContent);
     }
 
+    [Function("ReorderSessionActivities")]
+    public async Task<HttpResponseData> ReorderActivities(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "sessions/{id:int}/activities/reorder")] HttpRequestData req,
+        int id)
+    {
+        var body = await req.ReadFromJsonAsync<ReorderActivitiesRequest>()
+            ?? throw new InvalidOperationException("Invalid request body.");
+        await mediator.Send(new ReorderSessionActivitiesCommand(id,
+            body.Items.Select(i => new ReorderItem(i.SessionActivityId, i.DisplayOrder)).ToList()));
+        return req.CreateResponse(HttpStatusCode.NoContent);
+    }
+
     private record UpdateSessionRequest(DateTime Date, string Title, string? Notes);
     private record AddSessionActivityRequest(int ActivityId, int PhaseId, int FocusId, int Duration, string? Notes);
     private record UpdateSessionActivityRequest(int PhaseId, int FocusId, int Duration, string? Notes);
     private record UpdateKeyPointsRequest(List<string> KeyPoints);
+    private record ReorderActivitiesRequest(List<ReorderActivityItem> Items);
+    private record ReorderActivityItem(int SessionActivityId, int DisplayOrder);
 }

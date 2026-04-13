@@ -39,4 +39,9 @@ public class SessionActivity
         Duration = duration;
         Notes = notes;
     }
+
+    public void UpdateDisplayOrder(int displayOrder)
+    {
+        DisplayOrder = displayOrder;
+    }
 }

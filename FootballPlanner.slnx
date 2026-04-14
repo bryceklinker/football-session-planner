@@ -37,6 +37,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/FootballPlanner.Feature.Tests/FootballPlanner.Feature.Tests.csproj" />
+    <Project Path="tests/FootballPlanner.Component.Tests/FootballPlanner.Component.Tests.csproj" />
     <Project Path="tests/FootballPlanner.Integration.Tests/FootballPlanner.Integration.Tests.csproj" />
     <Project Path="tests/FootballPlanner.Unit.Tests/FootballPlanner.Unit.Tests.csproj" />
   </Folder>

@@ -1,0 +1,230 @@
+@using FootballPlanner.Web.Models
+@inject IJSRuntime JS
+
+<svg id="@_svgId"
+     viewBox="0 0 100 @_pitchHeight.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
+     style="width:100%;display:block;background:#2d5a27;cursor:@_cursor;"
+     @onclick="HandleSvgClick"
+     @onmousemove="HandleMouseMove">
+
+    <defs>
+        <marker id="arr-run-@_svgId"    markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="white"/></marker>
+        <marker id="arr-pass-@_svgId"   markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#90caf9"/></marker>
+        <marker id="arr-dribble-@_svgId" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#ffcc80"/></marker>
+    </defs>
+
+    <!-- Pitch lines -->
+    <rect x="2" y="@(2 * _pitchHeight / 100)"
+          width="96" height="@(96 * _pitchHeight / 100)"
+          fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="0.5"/>
+    <line x1="50" y1="@(2 * _pitchHeight / 100)" x2="50" y2="@(98 * _pitchHeight / 100)"
+          stroke="rgba(255,255,255,0.4)" stroke-width="0.3"/>
+    <ellipse cx="50" cy="@(50 * _pitchHeight / 100)" rx="9.15" ry="@(9.15 * _pitchHeight / 100)"
+             fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.3"/>
+
+    <!-- Goals -->
+    @for (var gi = 0; gi < State.Diagram.Goals.Count; gi++)
+    {
+        var goal = State.Diagram.Goals[gi];
+        var gref = $"goals/{gi}";
+        <rect data-element="@gref"
+              x="@goal.X" y="@goal.Y"
+              width="@goal.Width" height="@(goal.Width / 7.0)"
+              fill="none" stroke="white" stroke-width="0.8"
+              style="cursor:pointer;"
+              @onclick:stopPropagation="true"
+              @onclick="() => HandleElementClick(gref)"/>
+    }
+
+    <!-- Cones -->
+    @for (var ci = 0; ci < State.Diagram.Cones.Count; ci++)
+    {
+        var cone = State.Diagram.Cones[ci];
+        var cref = $"cones/{ci}";
+        <polygon data-element="@cref"
+                 points="@cone.X,@(cone.Y * _pitchHeight / 100 - 2) @(cone.X - 1.5),@(cone.Y * _pitchHeight / 100 + 1) @(cone.X + 1.5),@(cone.Y * _pitchHeight / 100 + 1)"
+                 fill="#f0a500"
+                 style="cursor:pointer;"
+                 @onclick:stopPropagation="true"
+                 @onclick="() => HandleElementClick(cref)"/>
+    }
+
+    <!-- Coaches -->
+    @for (var ki = 0; ki < State.Diagram.Coaches.Count; ki++)
+    {
+        var coach = State.Diagram.Coaches[ki];
+        var kref = $"coaches/{ki}";
+        <circle data-element="@kref"
+                cx="@coach.X" cy="@(coach.Y * _pitchHeight / 100)"
+                r="3" fill="#f0a500" stroke="white" stroke-width="0.5"
+                style="cursor:pointer;"
+                @onclick:stopPropagation="true"
+                @onclick="() => HandleElementClick(kref)"/>
+        @((MarkupString)$"<text x=\"{coach.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" y=\"{(coach.Y * _pitchHeight / 100 + 0.8).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"white\" font-size=\"2.5\" font-weight=\"bold\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(coach.Label)}</text>")
+    }
+
+    <!-- Players -->
+    @for (var ti = 0; ti < State.Diagram.Teams.Count; ti++)
+    {
+        var team = State.Diagram.Teams[ti];
+        for (var pi = 0; pi < team.Players.Count; pi++)
+        {
+            var player = team.Players[pi];
+            var pref = $"teams/{ti}/players/{pi}";
+            <circle data-element="@pref"
+                    cx="@player.X" cy="@(player.Y * _pitchHeight / 100)"
+                    r="3" fill="@team.Color" stroke="white" stroke-width="0.5"
+                    style="cursor:pointer;"
+                    @onclick:stopPropagation="true"
+                    @onclick="() => HandleElementClick(pref)"/>
+            @if (!string.IsNullOrEmpty(player.Label))
+            {
+                @((MarkupString)$"<text x=\"{player.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" y=\"{(player.Y * _pitchHeight / 100 + 0.8).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"white\" font-size=\"2.5\" font-weight=\"bold\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(player.Label)}</text>")
+            }
+        }
+    }
+
+    <!-- Arrows -->
+    @for (var ai = 0; ai < State.Diagram.Arrows.Count; ai++)
+    {
+        var arrow = State.Diagram.Arrows[ai];
+        var aref = $"arrows/{ai}";
+        var (stroke, dasharray, markerId) = arrow.Style switch
+        {
+            ArrowStyle.Pass    => ("#90caf9", "4,3",  $"arr-pass-{_svgId}"),
+            ArrowStyle.Dribble => ("#ffcc80", "none", $"arr-dribble-{_svgId}"),
+            _                  => ("white",   "none", $"arr-run-{_svgId}")
+        };
+        <path data-element="@aref"
+              d="@BuildArrowPath(arrow)"
+              stroke="@stroke"
+              stroke-width="@(arrow.Style == ArrowStyle.Pass ? "1.5" : "2")"
+              stroke-dasharray="@dasharray"
+              fill="none"
+              marker-end="url(#@markerId)"
+              style="cursor:pointer;"
+              @onclick:stopPropagation="true"
+              @onclick="() => HandleElementClick(aref)"/>
+    }
+
+    <!-- Ghost cursor for active placement tools -->
+    @if (_ghostX >= 0 && IsPlacementTool)
+    {
+        <circle cx="@_ghostX" cy="@_ghostY"
+                r="3" fill="rgba(255,255,255,0.25)" stroke="rgba(255,255,255,0.5)"
+                stroke-dasharray="1,1" stroke-width="0.5"
+                pointer-events="none"/>
+    }
+</svg>
+
+@code {
+    [Parameter, EditorRequired] public DiagramEditorState State { get; set; } = null!;
+    [Parameter] public EventCallback<(double X, double Y)> OnPlacePlayer { get; set; }
+    [Parameter] public EventCallback<(double X, double Y)> OnPlaceCoach { get; set; }
+    [Parameter] public EventCallback<(double X, double Y)> OnPlaceCone { get; set; }
+    [Parameter] public EventCallback<(double X, double Y)> OnPlaceGoal { get; set; }
+    [Parameter] public EventCallback<(double X, double Y)> OnArrowPoint { get; set; }
+    [Parameter] public EventCallback<string> OnElementClick { get; set; }
+
+    private readonly string _svgId = $"pitch-{Guid.NewGuid():N}";
+    private double _ghostX = -1;
+    private double _ghostY = -1;
+
+    private double _pitchHeight => State.Diagram.PitchFormat switch
+    {
+        PitchFormat.ElevenVElevenFull  => 64.0,
+        PitchFormat.ElevenVElevenHalf  => 128.0,
+        PitchFormat.NineVNineFull      => 62.5,
+        PitchFormat.NineVNineHalf      => 125.0,
+        PitchFormat.SevenVSevenFull    => 66.7,
+        PitchFormat.SevenVSevenHalf    => 133.3,
+        PitchFormat.Custom when State.Diagram is { CustomHeight: { } h, CustomWidth: { } w }
+            => h / w * 100.0,
+        _ => 64.0
+    };
+
+    private bool IsPlacementTool => State.ActiveTool is
+        "player" or "coach" or "cone" or "goal" or
+        "arrow-run" or "arrow-pass" or "arrow-dribble";
+
+    private string _cursor => State.ActiveTool switch
+    {
+        "move"   => "move",
+        "delete" => "crosshair",
+        _ when IsPlacementTool => "crosshair",
+        _ => "default"
+    };
+
+    private async Task HandleSvgClick(MouseEventArgs e)
+    {
+        double x = e.OffsetX;
+        double y = e.OffsetY;
+        try
+        {
+            var coords = await JS.InvokeAsync<SvgCoords>(
+                "diagramInterop.getSvgCoordinates", _svgId, e.ClientX, e.ClientY);
+            x = coords.X;
+            y = coords.Y;
+        }
+        catch { /* bUnit/test environment — fall back to OffsetX/Y */ }
+
+        switch (State.ActiveTool)
+        {
+            case "player":         await OnPlacePlayer.InvokeAsync((x, y)); break;
+            case "coach":          await OnPlaceCoach.InvokeAsync((x, y));  break;
+            case "cone":           await OnPlaceCone.InvokeAsync((x, y));   break;
+            case "goal":           await OnPlaceGoal.InvokeAsync((x, y));   break;
+            case "arrow-run":
+            case "arrow-pass":
+            case "arrow-dribble":  await OnArrowPoint.InvokeAsync((x, y));  break;
+        }
+    }
+
+    private Task HandleElementClick(string elementRef)
+        => OnElementClick.InvokeAsync(elementRef);
+
+    private void HandleMouseMove(MouseEventArgs e)
+    {
+        if (!IsPlacementTool) return;
+        _ghostX = e.OffsetX;
+        _ghostY = e.OffsetY;
+    }
+
+    private string BuildArrowPath(ArrowElement arrow)
+    {
+        var x1 = arrow.X1;
+        var y1 = arrow.Y1 * _pitchHeight / 100;
+        var x2 = arrow.X2;
+        var y2 = arrow.Y2 * _pitchHeight / 100;
+        var cx = arrow.Cx;
+        var cy = arrow.Cy * _pitchHeight / 100;
+
+        if (arrow.Style == ArrowStyle.Dribble)
+        {
+            const int waves = 4;
+            var sb = new System.Text.StringBuilder();
+            sb.Append($"M {x1.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {y1.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}");
+            for (var i = 0; i < waves; i++)
+            {
+                var t1 = (i + 0.5) / waves;
+                var t2 = (i + 1.0) / waves;
+                var mx1 = x1 + (x2 - x1) * t1;
+                var my1 = y1 + (y2 - y1) * t1;
+                var mx2 = x1 + (x2 - x1) * t2;
+                var my2 = y1 + (y2 - y1) * t2;
+                var dx = x2 - x1;
+                var dy = y2 - y1;
+                var len = Math.Sqrt(dx * dx + dy * dy);
+                var amp = (i % 2 == 0 ? 1.0 : -1.0) * 3.0;
+                var cpx = (mx1 + mx2) / 2 + (len > 0 ? -dy / len * amp : 0);
+                var cpy = (my1 + my2) / 2 + (len > 0 ? dx / len * amp : 0);
+                sb.Append($" Q {cpx.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {cpy.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {mx2.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {my2.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}");
+            }
+            return sb.ToString();
+        }
+
+        return $"M {x1.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {y1.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} Q {cx.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {cy.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {x2.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {y2.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}";
+    }
+
+    private record SvgCoords(double X, double Y);
+}

@@ -163,14 +163,19 @@ public class DiagramEditorState
     private static DiagramModel ApplyMove(DiagramModel diagram, string elementRef, double x, double y)
     {
         var parts = elementRef.Split('/');
+        if (parts.Length < 2) return diagram;
+        if (!int.TryParse(parts[1], out var idx)) return diagram;
+
         return parts[0] switch
         {
-            "teams"   => ApplyMovePlayer(diagram, int.Parse(parts[1]), int.Parse(parts[3]), x, y),
-            "coaches" => diagram with { Coaches = ReplaceAt(diagram.Coaches, int.Parse(parts[1]), c => c with { X = x, Y = y }) },
-            "cones"   => diagram with { Cones   = ReplaceAt(diagram.Cones,   int.Parse(parts[1]), c => c with { X = x, Y = y }) },
-            "goals"   => diagram with { Goals   = ReplaceAt(diagram.Goals,   int.Parse(parts[1]), g => g with { X = x, Y = y }) },
-            "arrows"  => diagram with { Arrows  = ReplaceAt(diagram.Arrows,  int.Parse(parts[1]), a => a with { X2 = x, Y2 = y }) },
-            _         => diagram
+            "teams" when parts.Length >= 4 && int.TryParse(parts[3], out var pIdx)
+                => ApplyMovePlayer(diagram, idx, pIdx, x, y),
+            "coaches" => diagram with { Coaches = ReplaceAt(diagram.Coaches, idx, c => c with { X = x, Y = y }) },
+            "cones"   => diagram with { Cones   = ReplaceAt(diagram.Cones,   idx, c => c with { X = x, Y = y }) },
+            "goals"   => diagram with { Goals   = ReplaceAt(diagram.Goals,   idx, g => g with { X = x, Y = y }) },
+            "arrows"  => diagram with { Arrows  = ReplaceAt(diagram.Arrows,  idx,
+                a => a with { X2 = x, Y2 = y, Cx = (a.X1 + x) / 2.0, Cy = (a.Y1 + y) / 2.0 }) },
+            _ => diagram
         };
     }
 
@@ -185,14 +190,18 @@ public class DiagramEditorState
     private static DiagramModel ApplyDelete(DiagramModel diagram, string elementRef)
     {
         var parts = elementRef.Split('/');
+        if (parts.Length < 2) return diagram;
+        if (!int.TryParse(parts[1], out var idx)) return diagram;
+
         return parts[0] switch
         {
-            "teams"   => ApplyDeletePlayer(diagram, int.Parse(parts[1]), int.Parse(parts[3])),
-            "coaches" => diagram with { Coaches = RemoveAt(diagram.Coaches, int.Parse(parts[1])) },
-            "cones"   => diagram with { Cones   = RemoveAt(diagram.Cones,   int.Parse(parts[1])) },
-            "goals"   => diagram with { Goals   = RemoveAt(diagram.Goals,   int.Parse(parts[1])) },
-            "arrows"  => diagram with { Arrows  = RemoveAt(diagram.Arrows,  int.Parse(parts[1])) },
-            _         => diagram
+            "teams" when parts.Length >= 4 && int.TryParse(parts[3], out var pIdx)
+                => ApplyDeletePlayer(diagram, idx, pIdx),
+            "coaches" => diagram with { Coaches = RemoveAt(diagram.Coaches, idx) },
+            "cones"   => diagram with { Cones   = RemoveAt(diagram.Cones,   idx) },
+            "goals"   => diagram with { Goals   = RemoveAt(diagram.Goals,   idx) },
+            "arrows"  => diagram with { Arrows  = RemoveAt(diagram.Arrows,  idx) },
+            _ => diagram
         };
     }
 

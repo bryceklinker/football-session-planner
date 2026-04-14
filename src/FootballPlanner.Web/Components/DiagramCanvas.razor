@@ -163,10 +163,16 @@
         {
             var coords = await JS.InvokeAsync<SvgCoords>(
                 "diagramInterop.getSvgCoordinates", _svgId, e.ClientX, e.ClientY);
-            x = coords.X;
-            y = coords.Y;
+            if (coords is not null)
+            {
+                x = coords.X;
+                y = coords.Y;
+            }
         }
-        catch { /* bUnit/test environment — fall back to OffsetX/Y */ }
+        catch (JSException)
+        {
+            // JS interop not available (test environment) — fall back to offset coordinates
+        }
 
         switch (State.ActiveTool)
         {
@@ -183,11 +189,30 @@
     private Task HandleElementClick(string elementRef)
         => OnElementClick.InvokeAsync(elementRef);
 
-    private void HandleMouseMove(MouseEventArgs e)
+    private async Task HandleMouseMove(MouseEventArgs e)
     {
         if (!IsPlacementTool) return;
-        _ghostX = e.OffsetX;
-        _ghostY = e.OffsetY;
+        try
+        {
+            var coords = await JS.InvokeAsync<SvgCoords>(
+                "diagramInterop.getSvgCoordinates", _svgId, e.ClientX, e.ClientY);
+            if (coords is not null)
+            {
+                _ghostX = coords.X;
+                _ghostY = coords.Y * _pitchHeight / 100.0;
+            }
+            else
+            {
+                _ghostX = e.OffsetX;
+                _ghostY = e.OffsetY;
+            }
+        }
+        catch (JSException)
+        {
+            // Test environment — ghost position will be approximate
+            _ghostX = e.OffsetX;
+            _ghostY = e.OffsetY;
+        }
     }
 
     private string BuildArrowPath(ArrowElement arrow)

@@ -1,0 +1,110 @@
+<h2>How do you place elements on the pitch?</h2>
+<p class="subtitle">Two interaction models — pick the one that feels right for a touchscreen-friendly desktop app</p>
+
+<div class="split">
+
+  <!-- Option A: Click tool, then click pitch -->
+  <div class="mockup">
+    <div class="mockup-header">A — Select tool, click to place</div>
+    <div class="mockup-body" style="background:#0d1117;padding:10px;">
+      <div style="display:flex;gap:8px;height:260px;font-size:11px;">
+
+        <!-- Vertical toolbar -->
+        <div style="width:38px;background:#161b22;border-radius:5px;padding:5px;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <div style="font-size:7px;color:#8b949e;margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px;">Place</div>
+          <!-- Active tool highlighted -->
+          <div style="width:28px;height:28px;border-radius:5px;background:#e94560;border:2px solid #fff;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Attacker">
+            <span style="color:#fff;font-size:8px;font-weight:700;">ATT</span>
+          </div>
+          <div style="width:28px;height:28px;border-radius:5px;background:#21262d;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Defender">
+            <span style="color:#4169E1;font-size:8px;font-weight:700;">DEF</span>
+          </div>
+          <div style="width:28px;height:28px;border-radius:5px;background:#21262d;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Neutral/GK">
+            <span style="color:#8b949e;font-size:8px;font-weight:700;">GK</span>
+          </div>
+          <div style="width:28px;height:28px;border-radius:5px;background:#21262d;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Cone">
+            <span style="color:#f0a500;font-size:12px;">▲</span>
+          </div>
+          <div style="width:20px;height:1px;background:#30363d;margin:2px 0;"></div>
+          <div style="font-size:7px;color:#8b949e;margin-bottom:2px;text-transform:uppercase;letter-spacing:.5px;">Arrow</div>
+          <div style="width:28px;height:28px;border-radius:5px;background:#21262d;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Run">
+            <span style="color:#aaa;font-size:13px;">→</span>
+          </div>
+          <div style="width:28px;height:28px;border-radius:5px;background:#21262d;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Pass">
+            <span style="color:#aaa;font-size:10px;">- -▶</span>
+          </div>
+          <div style="width:20px;height:1px;background:#30363d;margin:2px 0;"></div>
+          <div style="width:28px;height:28px;border-radius:5px;background:#21262d;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Move/Select">
+            <span style="color:#aaa;font-size:13px;">✥</span>
+          </div>
+          <div style="width:28px;height:28px;border-radius:5px;background:#21262d;display:flex;align-items:center;justify-content:center;cursor:pointer;" title="Delete">
+            <span style="color:#8b949e;font-size:12px;">🗑</span>
+          </div>
+        </div>
+
+        <!-- Pitch — cursor shows where next click will place -->
+        <div style="flex:1;background:#2d5a27;border-radius:5px;border:1px solid #4a8f42;position:relative;">
+          <div style="position:absolute;inset:8px;border:1px solid rgba(255,255,255,0.22);"></div>
+          <div style="position:absolute;left:50%;top:8px;bottom:8px;width:1px;background:rgba(255,255,255,0.12);"></div>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:26%;height:36%;border:1px solid rgba(255,255,255,0.15);border-radius:50%;"></div>
+          <!-- Placed tokens -->
+          <div style="position:absolute;top:30px;left:28%;width:18px;height:18px;border-radius:50%;background:#e94560;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff;font-weight:700;">A</div>
+          <div style="position:absolute;top:55px;left:48%;width:18px;height:18px;border-radius:50%;background:#e94560;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff;font-weight:700;">A</div>
+          <div style="position:absolute;top:90px;left:35%;width:18px;height:18px;border-radius:50%;background:#4169E1;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff;font-weight:700;">D</div>
+          <!-- Ghost cursor showing next placement -->
+          <div style="position:absolute;top:70px;left:62%;width:18px;height:18px;border-radius:50%;background:rgba(233,69,96,0.4);border:2px dashed #e94560;"></div>
+          <!-- Hint label -->
+          <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);border-radius:3px;padding:2px 8px;font-size:8px;color:#fff;white-space:nowrap;">ATT selected — click pitch to place</div>
+        </div>
+      </div>
+
+      <div style="margin-top:8px;background:#161b22;border-radius:4px;padding:6px 10px;font-size:9px;color:#8b949e;">
+        <strong style="color:#e6edf3;">How it works:</strong> Click a tool to activate it (highlighted). Click anywhere on the pitch to place. Click the move tool (✥) to drag existing tokens around. Right-click or select + Delete to remove.
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B: Drag from palette -->
+  <div class="mockup">
+    <div class="mockup-header">B — Drag from palette onto pitch</div>
+    <div class="mockup-body" style="background:#0d1117;padding:10px;">
+      <div style="display:flex;flex-direction:column;gap:8px;height:260px;font-size:11px;">
+
+        <!-- Pitch takes most of the space -->
+        <div style="flex:1;background:#2d5a27;border-radius:5px;border:1px solid #4a8f42;position:relative;">
+          <div style="position:absolute;inset:8px;border:1px solid rgba(255,255,255,0.22);"></div>
+          <div style="position:absolute;left:50%;top:8px;bottom:8px;width:1px;background:rgba(255,255,255,0.12);"></div>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:26%;height:36%;border:1px solid rgba(255,255,255,0.15);border-radius:50%;"></div>
+          <!-- Placed tokens -->
+          <div style="position:absolute;top:25px;left:28%;width:18px;height:18px;border-radius:50%;background:#e94560;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff;font-weight:700;">A</div>
+          <div style="position:absolute;top:50px;left:48%;width:18px;height:18px;border-radius:50%;background:#e94560;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff;font-weight:700;">A</div>
+          <div style="position:absolute;top:80px;left:35%;width:18px;height:18px;border-radius:50%;background:#4169E1;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff;font-weight:700;">D</div>
+          <!-- Dragging ghost -->
+          <div style="position:absolute;top:55px;left:58%;width:18px;height:18px;border-radius:50%;background:rgba(233,69,96,0.5);border:2px dashed #e94560;pointer-events:none;"></div>
+          <div style="position:absolute;bottom:6px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.6);border-radius:3px;padding:2px 8px;font-size:8px;color:#fff;white-space:nowrap;">Drag tokens from the palette below</div>
+        </div>
+
+        <!-- Horizontal palette at bottom -->
+        <div style="background:#161b22;border-radius:4px;padding:6px 10px;display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <span style="font-size:8px;color:#8b949e;white-space:nowrap;">DRAG ONTO PITCH:</span>
+          <div style="width:22px;height:22px;border-radius:50%;background:#e94560;border:2px solid rgba(255,255,255,0.5);display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff;font-weight:700;cursor:grab;">A</div>
+          <div style="width:22px;height:22px;border-radius:50%;background:#4169E1;border:2px solid rgba(255,255,255,0.5);display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff;font-weight:700;cursor:grab;">D</div>
+          <div style="width:22px;height:22px;border-radius:50%;background:#555;border:2px solid rgba(255,255,255,0.5);display:flex;align-items:center;justify-content:center;font-size:7px;color:#fff;font-weight:700;cursor:grab;">N</div>
+          <div style="width:18px;height:18px;display:flex;align-items:flex-end;justify-content:center;cursor:grab;"><span style="color:#f0a500;font-size:14px;">▲</span></div>
+          <div style="height:20px;width:1px;background:#30363d;"></div>
+          <span style="font-size:8px;color:#8b949e;white-space:nowrap;">ARROWS:</span>
+          <div style="background:#21262d;border-radius:3px;padding:2px 7px;font-size:9px;color:#aaa;cursor:pointer;">Run →</div>
+          <div style="background:#21262d;border-radius:3px;padding:2px 7px;font-size:9px;color:#aaa;cursor:pointer;">Pass - -▶</div>
+          <div style="background:#21262d;border-radius:3px;padding:2px 7px;font-size:9px;color:#aaa;cursor:pointer;">Dribble ↝</div>
+        </div>
+      </div>
+
+      <div style="margin-top:8px;background:#161b22;border-radius:4px;padding:6px 10px;font-size:9px;color:#8b949e;">
+        <strong style="color:#e6edf3;">How it works:</strong> Drag tokens from the bottom palette onto the pitch. Once placed, drag them around freely. For arrows, click the arrow type then click start → end points on the pitch.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<p class="subtitle" style="margin-top:16px;">Tell me which feels more natural, or if you want a hybrid of both.</p>

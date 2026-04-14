@@ -51,6 +51,19 @@ public class ActivityFunctions(IMediator mediator)
         return req.CreateResponse(System.Net.HttpStatusCode.NoContent);
     }
 
+    [Function("SaveActivityDiagram")]
+    public async Task<HttpResponseData> SaveDiagram(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "activities/{id:int}/diagram")] HttpRequestData req,
+        int id)
+    {
+        var body = await req.ReadFromJsonAsync<SaveDiagramRequest>()
+            ?? throw new InvalidOperationException("Invalid request body.");
+        await mediator.Send(new SaveDiagramCommand(id, body.DiagramJson));
+        return req.CreateResponse(System.Net.HttpStatusCode.NoContent);
+    }
+
     private record UpdateActivityRequest(
         string Name, string Description, string? InspirationUrl, int EstimatedDuration);
+
+    private record SaveDiagramRequest(string? DiagramJson);
 }

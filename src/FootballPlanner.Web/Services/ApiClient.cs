@@ -40,6 +40,9 @@ public class ApiClient(HttpClient http)
     public Task<HttpResponseMessage> DeleteActivityAsync(int id) =>
         http.DeleteAsync($"activities/{id}");
 
+    public Task<HttpResponseMessage> SaveDiagramAsync(int activityId, string? diagramJson) =>
+        http.PutAsJsonAsync($"activities/{activityId}/diagram", new SaveDiagramRequest(diagramJson));
+
     public Task<List<SessionDto>?> GetSessionsAsync() =>
         http.GetFromJsonAsync<List<SessionDto>>("sessions");
 
@@ -98,4 +101,5 @@ public class ApiClient(HttpClient http)
     public record UpdateSessionActivityKeyPointsRequest(List<string> KeyPoints);
     public record ReorderSessionActivityItem(int SessionActivityId, int DisplayOrder);
     private record ReorderSessionActivitiesRequest(List<ReorderSessionActivityItem> Items);
+    private record SaveDiagramRequest(string? DiagramJson);
 }

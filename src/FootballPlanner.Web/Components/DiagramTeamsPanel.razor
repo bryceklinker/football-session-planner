@@ -1,0 +1,50 @@
+@using FootballPlanner.Web.Models
+
+<div class="diagram-teams-panel">
+    <div class="d-flex justify-space-between align-center mb-2">
+        <MudText Typo="Typo.subtitle2">Teams</MudText>
+        <MudIconButton Icon="@Icons.Material.Filled.Add"
+                       Size="Size.Small"
+                       data-testid="add-team"
+                       OnClick="AddTeam"
+                       title="Add team" />
+    </div>
+
+    @foreach (var team in State.Diagram.Teams)
+    {
+        <div class="d-flex align-center gap-1 mb-1"
+             data-testid="select-team-@team.Id"
+             style="cursor:pointer;"
+             @onclick="() => State.SetActiveTeam(team.Id)">
+            <div style="width:14px;height:14px;border-radius:50%;background:@team.Color;flex-shrink:0;border:1px solid rgba(255,255,255,0.3);" />
+            <MudText Typo="Typo.body2" Style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                @team.Name
+            </MudText>
+            <span data-testid="@($"delete-team-{team.Id}")"
+                  @onclick="() => State.DeleteTeam(team.Id)"
+                  @onclick:stopPropagation="true">
+                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                               Size="Size.Small"
+                               title="Delete team" />
+            </span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public DiagramEditorState State { get; set; } = null!;
+
+    private static readonly string[] TeamColors =
+    [
+        "#e94560", "#4169E1", "#43a047", "#f0a500", "#9c27b0", "#00acc1"
+    ];
+    private int _teamCounter = 2;
+
+    private void AddTeam()
+    {
+        _teamCounter++;
+        var id = $"t{_teamCounter}";
+        var color = TeamColors[(_teamCounter - 1) % TeamColors.Length];
+        State.AddTeam(id, $"Team {_teamCounter}", color);
+    }
+}

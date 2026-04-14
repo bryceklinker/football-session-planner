@@ -15,13 +15,13 @@
         <div class="d-flex align-center gap-1 mb-1"
              data-testid="select-team-@team.Id"
              style="cursor:pointer;"
-             @onclick="() => State.SetActiveTeam(team.Id)">
+             @onclick="() => SelectTeam(team.Id)">
             <div style="width:14px;height:14px;border-radius:50%;background:@team.Color;flex-shrink:0;border:1px solid rgba(255,255,255,0.3);" />
             <MudText Typo="Typo.body2" Style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                 @team.Name
             </MudText>
             <span data-testid="@($"delete-team-{team.Id}")"
-                  @onclick="() => State.DeleteTeam(team.Id)"
+                  @onclick="() => DeleteTeam(team.Id)"
                   @onclick:stopPropagation="true">
                 <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                Size="Size.Small"
@@ -38,13 +38,31 @@
     [
         "#e94560", "#4169E1", "#43a047", "#f0a500", "#9c27b0", "#00acc1"
     ];
-    private int _teamCounter = 2;
 
     private void AddTeam()
     {
-        _teamCounter++;
-        var id = $"t{_teamCounter}";
-        var color = TeamColors[(_teamCounter - 1) % TeamColors.Length];
-        State.AddTeam(id, $"Team {_teamCounter}", color);
+        var counter = State.Diagram.Teams.Count + 1;
+        var id = $"t{counter}";
+        // Ensure uniqueness if id already exists
+        while (State.Diagram.Teams.Any(t => t.Id == id))
+        {
+            counter++;
+            id = $"t{counter}";
+        }
+        var color = TeamColors[(State.Diagram.Teams.Count) % TeamColors.Length];
+        State.AddTeam(id, $"Team {counter}", color);
+        StateHasChanged();
+    }
+
+    private void SelectTeam(string teamId)
+    {
+        State.SetActiveTeam(teamId);
+        StateHasChanged();
+    }
+
+    private void DeleteTeam(string teamId)
+    {
+        State.DeleteTeam(teamId);
+        StateHasChanged();
     }
 }

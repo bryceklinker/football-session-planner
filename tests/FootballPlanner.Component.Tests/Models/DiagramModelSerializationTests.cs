@@ -1,15 +1,11 @@
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using FootballPlanner.Web.Models;
 
 namespace FootballPlanner.Component.Tests.Models;
 
 public class DiagramModelSerializationTests
 {
-    private static readonly JsonSerializerOptions Options = new()
-    {
-        Converters = { new JsonStringEnumConverter() }
-    };
+    private static readonly JsonSerializerOptions Options = new JsonSerializerOptions();
 
     [Fact]
     public void PlayerElement_RoundTrips()
@@ -40,6 +36,7 @@ public class DiagramModelSerializationTests
 
         Assert.Equal("Coach", result.Coaches[0].Label);
         Assert.Equal(50.0, result.Coaches[0].X);
+        Assert.Equal(10.0, result.Coaches[0].Y);
     }
 
     [Fact]
@@ -69,6 +66,8 @@ public class DiagramModelSerializationTests
         var result = JsonSerializer.Deserialize<DiagramModel>(json, Options)!;
 
         Assert.Equal(15.0, result.Goals[0].Width);
+        Assert.Equal(10.0, result.Goals[0].X);
+        Assert.Equal(50.0, result.Goals[0].Y);
     }
 
     [Theory]
@@ -86,8 +85,11 @@ public class DiagramModelSerializationTests
 
         Assert.Equal(style, result.Arrows[0].Style);
         Assert.Equal(10.0, result.Arrows[0].X1);
+        Assert.Equal(20.0, result.Arrows[0].Y1);
         Assert.Equal(80.0, result.Arrows[0].X2);
+        Assert.Equal(70.0, result.Arrows[0].Y2);
         Assert.Equal(45.0, result.Arrows[0].Cx);
+        Assert.Equal(45.0, result.Arrows[0].Cy);
     }
 
     [Theory]

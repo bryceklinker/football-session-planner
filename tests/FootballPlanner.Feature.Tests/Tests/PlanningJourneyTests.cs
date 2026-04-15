@@ -60,4 +60,26 @@ public class PlanningJourneyTests(FeatureTestFixture fixture) : IClassFixture<Fe
         await Assertions.Expect(fixture.Page.GetByText("Rondo")).ToBeVisibleAsync();
         await Assertions.Expect(fixture.Page.GetByText("Warm Up")).ToBeVisibleAsync();
     }
+
+    [Fact]
+    public async Task CanOpenAndSaveDiagramEditor()
+    {
+        await fixture.NewPageAsync();
+
+        await fixture.PhaseJourney.CreatePhaseAsync(new CreatePhaseInput("Warm Up", 1));
+        await fixture.FocusJourney.CreateFocusAsync(new CreateFocusInput("Technique"));
+        await fixture.ActivityJourney.CreateActivityAsync(
+            new CreateActivityInput("Diagram Test Activity", "An activity with a diagram", 10));
+
+        await fixture.DiagramJourney.OpenDiagramEditorAsync("Diagram Test Activity");
+
+        // Modal should be open
+        await Assertions.Expect(fixture.Page.GetByTestId("save")).ToBeVisibleAsync();
+
+        // Save without placing anything
+        await fixture.DiagramJourney.SaveDiagramAsync();
+
+        // Modal should be closed, activity page shows "Diagram saved"
+        await Assertions.Expect(fixture.Page.GetByText("Diagram saved")).ToBeVisibleAsync();
+    }
 }

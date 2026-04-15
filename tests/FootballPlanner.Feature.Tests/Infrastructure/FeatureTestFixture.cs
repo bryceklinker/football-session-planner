@@ -21,6 +21,7 @@ public class FeatureTestFixture : IAsyncLifetime
     public ActivityJourney ActivityJourney { get; private set; } = null!;
     public SessionJourney SessionJourney { get; private set; } = null!;
     public SessionEditorJourney SessionEditorJourney { get; private set; } = null!;
+    public DiagramJourney DiagramJourney { get; private set; } = null!;
 
     public async Task InitializeAsync()
     {
@@ -62,6 +63,7 @@ public class FeatureTestFixture : IAsyncLifetime
         ActivityJourney = new ActivityJourney(Page);
         SessionJourney = new SessionJourney(Page);
         SessionEditorJourney = new SessionEditorJourney(Page);
+        DiagramJourney = new DiagramJourney(Page);
     }
 
     public async Task DisposeAsync()

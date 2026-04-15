@@ -1,6 +1,8 @@
 @page "/activities"
+@using FootballPlanner.Web.Components
 @inject Services.ApiClient Api
 @inject IJSRuntime JS
+@inject IDialogService DialogService
 
 <MudText Typo="Typo.h4" Class="mb-4">Activity Library</MudText>
 
@@ -51,9 +53,21 @@
                               Class="mb-3" />
                 <MudNumericField @bind-Value="_editDuration" Label="Duration (min)" Variant="Variant.Outlined"
                                  Min="1" Class="mb-3" />
-                <MudPaper Outlined="true" Class="pa-4 mb-3 d-flex align-center justify-center"
-                          Style="min-height:80px; cursor:default;">
-                    <MudText Color="Color.Secondary">Pitch diagram builder (coming soon)</MudText>
+                <MudPaper Outlined="true" Class="pa-4 mb-3" Style="min-height:80px;">
+                    <div class="d-flex justify-space-between align-center mb-2">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Pitch Diagram</MudText>
+                        <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Edit"
+                                   OnClick="OpenDiagramEditor">Edit Diagram</MudButton>
+                    </div>
+                    @if (!string.IsNullOrEmpty(_currentDiagramJson))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Success">Diagram saved</MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">No diagram yet</MudText>
+                    }
                 </MudPaper>
                 <div class="d-flex gap-2">
                     <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
@@ -84,6 +98,7 @@
     private string _editDescription = string.Empty;
     private string _editInspirationUrl = string.Empty;
     private int _editDuration = 30;
+    private string? _currentDiagramJson;
 
     private IEnumerable<Services.ApiClient.ActivityDto> FilteredActivities =>
         _activities?.Where(a => string.IsNullOrWhiteSpace(_search) ||
@@ -102,6 +117,7 @@
         _editDescription = string.Empty;
         _editInspirationUrl = string.Empty;
         _editDuration = 30;
+        _currentDiagramJson = null;
     }
 
     private void SelectActivity(Services.ApiClient.ActivityDto activity)
@@ -112,6 +128,7 @@
         _editDescription = activity.Description;
         _editInspirationUrl = activity.InspirationUrl ?? string.Empty;
         _editDuration = activity.EstimatedDuration;
+        _currentDiagramJson = activity.DiagramJson;
     }
 
     private async Task Save()
@@ -148,6 +165,26 @@
         _editDescription = string.Empty;
         _editInspirationUrl = string.Empty;
         _editDuration = 30;
+        _currentDiagramJson = null;
+    }
+
+    private async Task OpenDiagramEditor()
+    {
+        if (_selectedId == null) return;
+        var parameters = new DialogParameters
+        {
+            [nameof(Components.DiagramEditorModal.ActivityId)] = _selectedId.Value,
+            [nameof(Components.DiagramEditorModal.InitialDiagramJson)] = _currentDiagramJson
+        };
+        var options = new DialogOptions { FullScreen = true, CloseButton = false };
+        var dialog = await DialogService.ShowAsync<Components.DiagramEditorModal>(
+            "Edit Diagram", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: string savedJson })
+        {
+            _currentDiagramJson = savedJson;
+            _activities = await Api.GetActivitiesAsync();
+        }
     }
 
     private async Task OpenInspirationUrl()

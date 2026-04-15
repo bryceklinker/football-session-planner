@@ -102,8 +102,6 @@
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
     [Parameter] public string? InitialDiagramJson { get; set; }
     [Parameter] public int ActivityId { get; set; }
-    [Parameter] public EventCallback<DiagramEditorState> OnStateCreated { get; set; }
-
     private readonly DiagramEditorState _state = new();
 
     private static readonly JsonSerializerOptions _jsonOptions = new()
@@ -120,7 +118,6 @@
             catch { /* ignore malformed JSON — start fresh */ }
         }
         _state.Initialize(initial);
-        await OnStateCreated.InvokeAsync(_state);
     }
 
     private void PlacePlayer((double X, double Y) coords) { _state.PlacePlayer(coords.X, coords.Y); StateHasChanged(); }

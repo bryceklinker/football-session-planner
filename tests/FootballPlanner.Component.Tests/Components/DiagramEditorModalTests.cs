@@ -1,5 +1,7 @@
+using System.Text.Json;
 using Bunit;
 using FootballPlanner.Web.Components;
+using FootballPlanner.Web.Models;
 using FootballPlanner.Web.Services;
 using MudBlazor;
 using MudBlazor.Services;
@@ -40,7 +42,7 @@ public class DiagramEditorModalTests : TestContext
     }
 
     [Fact]
-    public async Task ClickPlayer_DoesNotThrow()
+    public async Task ClickPlayer_ActivatesPlayerTool()
     {
         var provider = SetupDialogProvider();
         var dialogService = Services.GetRequiredService<IDialogService>();
@@ -52,11 +54,15 @@ public class DiagramEditorModalTests : TestContext
         await provider.InvokeAsync(() => dialogService.ShowAsync<DiagramEditorModal>("Edit Diagram", parameters,
             new DialogOptions { FullScreen = true }));
 
-        // Clicking the player tool should not throw
+        // Player tool button is not active before clicking
+        var playerBtnBefore = provider.Find("[data-testid='tool-player'] button");
+        Assert.DoesNotContain("mud-primary-text", playerBtnBefore.ClassName);
+
         provider.Find("[data-testid='tool-player']").Click();
 
-        // Button still present after click
-        Assert.NotNull(provider.Find("[data-testid='tool-player']"));
+        // After clicking, MudBlazor renders the primary Color as mud-primary-text class on the button
+        var playerBtnAfter = provider.Find("[data-testid='tool-player'] button");
+        Assert.Contains("mud-primary-text", playerBtnAfter.ClassName);
     }
 
     [Fact]
@@ -72,8 +78,12 @@ public class DiagramEditorModalTests : TestContext
         await provider.InvokeAsync(() => dialogService.ShowAsync<DiagramEditorModal>("Edit Diagram", parameters,
             new DialogOptions { FullScreen = true }));
 
-        var undoBtn = provider.Find("[data-testid='undo']");
-        undoBtn.Click();
+        // Undo button is disabled when the undo stack is empty
+        var undoBtn = provider.Find("[data-testid='undo'] button");
+        Assert.True(undoBtn.HasAttribute("disabled"));
+
+        // Click does not throw even though stack is empty
+        provider.Find("[data-testid='undo']").Click();
     }
 
     [Fact]
@@ -93,5 +103,35 @@ public class DiagramEditorModalTests : TestContext
         provider.Find("[data-testid='clear']").Click();
 
         Assert.NotNull(provider.Find("svg"));
+    }
+
+    [Fact]
+    public async Task InitialDiagramJson_LoadsExistingDiagram()
+    {
+        var provider = SetupDialogProvider();
+        var dialogService = Services.GetRequiredService<IDialogService>();
+
+        var diagram = new DiagramModel(
+            PitchFormat.ElevenVElevenFull, null, null,
+            new List<DiagramTeam>
+            {
+                new("t1", "Red", "#e94560", new List<PlayerElement> { new("9", 30, 40) })
+            },
+            new List<CoachElement>(),
+            new List<ConeElement>(),
+            new List<GoalElement>(),
+            new List<ArrowElement>());
+        var json = JsonSerializer.Serialize(diagram,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        var parameters = new DialogParameters
+        {
+            [nameof(DiagramEditorModal.InitialDiagramJson)] = json
+        };
+        await provider.InvokeAsync(() => dialogService.ShowAsync<DiagramEditorModal>("Edit Diagram", parameters,
+            new DialogOptions { FullScreen = true }));
+
+        // The SVG should contain a circle for the player element
+        Assert.Contains("<circle", provider.Markup);
     }
 }

@@ -58,6 +58,7 @@
                         <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Pitch Diagram</MudText>
                         <MudButton Variant="Variant.Outlined" Size="Size.Small"
                                    StartIcon="@Icons.Material.Filled.Edit"
+                                   Disabled="@_isCreating"
                                    OnClick="OpenDiagramEditor">Edit Diagram</MudButton>
                     </div>
                     @if (!string.IsNullOrEmpty(_currentDiagramJson))

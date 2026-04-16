@@ -140,7 +140,8 @@
     private async Task SaveAsync()
     {
         var json = JsonSerializer.Serialize(_state.Diagram, _jsonOptions);
-        await Api.SaveDiagramAsync(ActivityId, json);
+        var response = await Api.SaveDiagramAsync(ActivityId, json);
+        response.EnsureSuccessStatusCode();
         MudDialog.Close(json);
     }
 }

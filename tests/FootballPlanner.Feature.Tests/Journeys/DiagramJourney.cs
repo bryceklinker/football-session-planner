@@ -25,7 +25,7 @@ public class DiagramJourney(IPage page)
 
     public async Task CancelDiagramAsync()
     {
-        await page.GetByRole(AriaRole.Button, new() { Name = "Cancel" }).ClickAsync();
+        await page.GetByTestId("cancel").ClickAsync();
         await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
     }
 }

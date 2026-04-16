@@ -93,7 +93,7 @@
         <span data-testid="redo" @onclick="Redo"><MudButton Disabled="@(!_state.CanRedo)" StartIcon="@Icons.Material.Filled.Redo">Redo</MudButton></span>
         <span data-testid="clear" @onclick="Clear"><MudButton Color="Color.Warning">Clear</MudButton></span>
         <MudSpacer />
-        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <span data-testid="cancel" @onclick="Cancel"><MudButton>Cancel</MudButton></span>
         <span data-testid="save" @onclick="SaveAsync"><MudButton Color="Color.Primary" Variant="Variant.Filled">Save Diagram</MudButton></span>
     </DialogActions>
 </MudDialog>

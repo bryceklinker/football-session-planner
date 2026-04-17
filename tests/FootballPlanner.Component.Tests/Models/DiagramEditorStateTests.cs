@@ -282,4 +282,33 @@ public class DiagramEditorStateTests
         state.Undo();
         Assert.False(state.CanUndo); // no further entries
     }
+
+    [Fact]
+    public void SetPitchFormat_UpdatesDiagramPitchFormat()
+    {
+        var state = new DiagramEditorState();
+        state.SetPitchFormat(PitchFormat.SevenVSevenFull);
+        Assert.Equal(PitchFormat.SevenVSevenFull, state.Diagram.PitchFormat);
+    }
+
+    [Fact]
+    public void SetPitchFormat_IsUndoable()
+    {
+        var state = new DiagramEditorState();
+        Assert.False(state.CanUndo);
+        state.SetPitchFormat(PitchFormat.NineVNineFull);
+        Assert.True(state.CanUndo);
+        state.Undo();
+        Assert.Equal(PitchFormat.ElevenVElevenFull, state.Diagram.PitchFormat);
+    }
+
+    [Fact]
+    public void SetPitchFormat_Custom_SetsWidthAndHeight()
+    {
+        var state = new DiagramEditorState();
+        state.SetPitchFormat(PitchFormat.Custom, customWidth: 80.0, customHeight: 50.0);
+        Assert.Equal(PitchFormat.Custom, state.Diagram.PitchFormat);
+        Assert.Equal(80.0, state.Diagram.CustomWidth);
+        Assert.Equal(50.0, state.Diagram.CustomHeight);
+    }
 }

@@ -33,6 +33,12 @@ public class DiagramEditorState
 
     public void SetActiveTeam(string teamId) => ActiveTeamId = teamId;
 
+    public void SetPitchFormat(PitchFormat format, double? customWidth = null, double? customHeight = null)
+    {
+        PushUndo();
+        Diagram = Diagram with { PitchFormat = format, CustomWidth = customWidth, CustomHeight = customHeight };
+    }
+
     public void PlacePlayer(double x, double y)
     {
         var team = Diagram.Teams.FirstOrDefault(t => t.Id == ActiveTeamId);

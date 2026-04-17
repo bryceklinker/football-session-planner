@@ -1,15 +1,20 @@
-.PHONY: build test test-unit test-integration test-feature up down logs migration update-db
+.PHONY: build test test-unit test-integration test-component test-feature ci up down logs migration update-db
 
 build:
 	dotnet build FootballPlanner.slnx --configuration Release
 
-test: test-unit test-integration
+ci: build test
+
+test: test-unit test-integration test-component up wait test-feature down logs
 
 test-unit:
 	dotnet test tests/FootballPlanner.Unit.Tests --configuration Release --logger trx
 
 test-integration:
 	dotnet test tests/FootballPlanner.Integration.Tests --configuration Release --logger trx
+
+test-component:
+	dotnet test tests/FootballPlanner.Component.Tests --configuration Release --logger trx
 
 test-feature:
 	dotnet test tests/FootballPlanner.Feature.Tests --configuration Release --logger trx
@@ -19,6 +24,9 @@ up:
 
 down:
 	docker compose down
+
+wait:
+	curl --retry 20 --retry-delay 5 --retry-all-errors -s http://localhost:4280/ > /dev/null
 
 logs:
 	docker compose logs --no-color

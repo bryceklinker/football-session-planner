@@ -37,6 +37,9 @@ jobs:
 
       - name: Run integration tests
         run: make test-integration
+        
+      - name: Run Component tests
+        run: make test-component
 
       - name: Create .env for Docker Compose
         # Variable names match what docker-compose.yml expects:
@@ -53,7 +56,7 @@ jobs:
       - name: Start Docker Compose stack
         run: |
           make up
-          curl --retry 20 --retry-delay 5 --retry-all-errors -s http://localhost:4280/ > /dev/null
+          make wait
 
       - name: Run feature tests
         id: feature-tests

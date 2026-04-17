@@ -42,7 +42,7 @@ services:
       context: .
       dockerfile: src/FootballPlanner.Api/Dockerfile
     ports:
-      - "7071:7071"
+      - "7071:80"
     environment:
       ConnectionStrings__DefaultConnection: "Server=tcp:db,1433;Database=FootballPlanner;User Id=sa;Password=${DB_PASSWORD};TrustServerCertificate=True"
       Auth0__Domain: "${AUTH0_DOMAIN}"

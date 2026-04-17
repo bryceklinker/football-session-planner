@@ -34,6 +34,7 @@ public class FeatureTestFixture : IAsyncLifetime
         try
         {
             var page = await setupContext.NewPageAsync();
+            AttachConsoleCapture(page);
             await new AuthJourney(page, BaseUrl).LoginAsync();
             await setupContext.StorageStateAsync(new() { Path = _storageStatePath });
         }
@@ -58,12 +59,19 @@ public class FeatureTestFixture : IAsyncLifetime
         });
         _contexts.Add(context);
         Page = await context.NewPageAsync();
+        AttachConsoleCapture(Page);
         PhaseJourney = new PhaseJourney(Page);
         FocusJourney = new FocusJourney(Page);
         ActivityJourney = new ActivityJourney(Page);
         SessionJourney = new SessionJourney(Page);
         SessionEditorJourney = new SessionEditorJourney(Page);
         DiagramJourney = new DiagramJourney(Page);
+    }
+
+    private static void AttachConsoleCapture(IPage page)
+    {
+        page.Console += (_, msg) => Console.WriteLine($"[browser:{msg.Type}] {msg.Text}");
+        page.PageError += (_, error) => Console.Error.WriteLine($"[browser:error] {error}");
     }
 
     public async Task DisposeAsync()

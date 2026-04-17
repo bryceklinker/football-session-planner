@@ -20,12 +20,12 @@
             <MudText Typo="Typo.body2" Style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                 @team.Name
             </MudText>
-            <span data-testid="@($"delete-team-{team.Id}")"
-                  @onclick="() => DeleteTeam(team.Id)"
-                  @onclick:stopPropagation="true">
-                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+            <span @onclick:stopPropagation="true">
+                <MudIconButton aria-label="@($"Delete team {team.Id}")"
+                               Icon="@Icons.Material.Filled.Delete"
                                Size="Size.Small"
-                               title="Delete team" />
+                               title="Delete team"
+                               OnClick="@(() => DeleteTeam(team.Id))" />
             </span>
         </div>
     }

@@ -62,7 +62,7 @@
         PropertyNameCaseInsensitive = true
     };
 
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         DiagramModel? initial = null;
         if (!string.IsNullOrWhiteSpace(InitialDiagramJson))

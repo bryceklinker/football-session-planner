@@ -52,7 +52,7 @@ public class DiagramTeamsPanelTests : TestContext
         var cut = RenderComponent<DiagramTeamsPanel>(
             p => p.Add(x => x.State, state));
 
-        cut.Find("[data-testid='delete-team-t1']").Click();
+        cut.Find("[aria-label='Delete team t1']").Click();
 
         Assert.Single(state.Diagram.Teams);
         Assert.DoesNotContain(state.Diagram.Teams, t => t.Id == "t1");

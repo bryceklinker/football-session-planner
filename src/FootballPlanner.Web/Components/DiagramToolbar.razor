@@ -1,0 +1,126 @@
+@using FootballPlanner.Web.Models
+
+<div style="width:150px;display:flex;flex-direction:column;gap:4px;align-items:center;padding:4px 0;">
+
+    <MudSelect T="PitchFormat"
+               aria-label="Pitch format"
+               Value="@State.Diagram.PitchFormat"
+               ValueChanged="@HandleFormatChanged"
+               Dense="true"
+               Margin="Margin.Dense"
+               Style="width:100%">
+        <MudSelectItem Value="PitchFormat.ElevenVElevenFull">11v11 Full</MudSelectItem>
+        <MudSelectItem Value="PitchFormat.ElevenVElevenHalf">11v11 Half</MudSelectItem>
+        <MudSelectItem Value="PitchFormat.NineVNineFull">9v9 Full</MudSelectItem>
+        <MudSelectItem Value="PitchFormat.NineVNineHalf">9v9 Half</MudSelectItem>
+        <MudSelectItem Value="PitchFormat.SevenVSevenFull">7v7 Full</MudSelectItem>
+        <MudSelectItem Value="PitchFormat.SevenVSevenHalf">7v7 Half</MudSelectItem>
+        <MudSelectItem Value="PitchFormat.Custom">Custom</MudSelectItem>
+    </MudSelect>
+
+    @if (State.Diagram.PitchFormat == PitchFormat.Custom)
+    {
+        <MudNumericField T="double"
+                         aria-label="Pitch width"
+                         Label="Width (m)"
+                         Value="@(State.Diagram.CustomWidth ?? 100.0)"
+                         ValueChanged="@HandleCustomWidthChanged"
+                         Min="10" Max="200"
+                         Dense="true" Margin="Margin.Dense"
+                         Style="width:100%" />
+        <MudNumericField T="double"
+                         aria-label="Pitch height"
+                         Label="Height (m)"
+                         Value="@(State.Diagram.CustomHeight ?? 64.0)"
+                         ValueChanged="@HandleCustomHeightChanged"
+                         Min="10" Max="200"
+                         Dense="true" Margin="Margin.Dense"
+                         Style="width:100%" />
+    }
+
+    <MudDivider />
+    <MudText Typo="Typo.caption" Color="Color.Secondary">Place</MudText>
+
+    <MudIconButton aria-label="Place player"
+                   Icon="@Icons.Material.Filled.Person"
+                   Size="Size.Small"
+                   Color="@(State.ActiveTool == "player" ? Color.Primary : Color.Default)"
+                   OnClick="@(() => HandleToolClick("player"))" />
+    <MudIconButton aria-label="Place coach"
+                   Icon="@Icons.Material.Filled.SportsHandball"
+                   Size="Size.Small"
+                   Color="@(State.ActiveTool == "coach" ? Color.Primary : Color.Default)"
+                   OnClick="@(() => HandleToolClick("coach"))" />
+    <MudIconButton aria-label="Place cone"
+                   Icon="@Icons.Material.Filled.ChangeHistory"
+                   Size="Size.Small"
+                   Color="@(State.ActiveTool == "cone" ? Color.Primary : Color.Default)"
+                   OnClick="@(() => HandleToolClick("cone"))" />
+    <MudIconButton aria-label="Place goal"
+                   Icon="@Icons.Material.Filled.SportsSoccer"
+                   Size="Size.Small"
+                   Color="@(State.ActiveTool == "goal" ? Color.Primary : Color.Default)"
+                   OnClick="@(() => HandleToolClick("goal"))" />
+
+    <MudDivider />
+    <MudText Typo="Typo.caption" Color="Color.Secondary">Arrow</MudText>
+
+    <MudIconButton aria-label="Run arrow"
+                   Icon="@Icons.Material.Filled.ArrowForward"
+                   Size="Size.Small"
+                   Color="@(State.ActiveTool == "arrow-run" ? Color.Primary : Color.Default)"
+                   OnClick="@(() => HandleToolClick("arrow-run"))" />
+    <MudIconButton aria-label="Pass arrow"
+                   Icon="@Icons.Material.Filled.ArrowRightAlt"
+                   Size="Size.Small"
+                   Color="@(State.ActiveTool == "arrow-pass" ? Color.Primary : Color.Default)"
+                   OnClick="@(() => HandleToolClick("arrow-pass"))" />
+    <MudIconButton aria-label="Dribble arrow"
+                   Icon="@Icons.Material.Filled.Waves"
+                   Size="Size.Small"
+                   Color="@(State.ActiveTool == "arrow-dribble" ? Color.Primary : Color.Default)"
+                   OnClick="@(() => HandleToolClick("arrow-dribble"))" />
+
+    <MudDivider />
+
+    <MudIconButton aria-label="Move element"
+                   Icon="@Icons.Material.Filled.OpenWith"
+                   Size="Size.Small"
+                   Color="@(State.ActiveTool == "move" ? Color.Primary : Color.Default)"
+                   OnClick="@(() => HandleToolClick("move"))" />
+    <MudIconButton aria-label="Delete element"
+                   Icon="@Icons.Material.Filled.Delete"
+                   Size="Size.Small"
+                   Color="@(State.ActiveTool == "delete" ? Color.Primary : Color.Default)"
+                   OnClick="@(() => HandleToolClick("delete"))" />
+
+</div>
+
+@code {
+    [Parameter, EditorRequired] public DiagramEditorState State { get; set; } = null!;
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private async Task HandleToolClick(string tool)
+    {
+        State.SetTool(tool);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleFormatChanged(PitchFormat format)
+    {
+        State.SetPitchFormat(format);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleCustomWidthChanged(double width)
+    {
+        State.SetPitchFormat(PitchFormat.Custom, width, State.Diagram.CustomHeight ?? 64.0);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleCustomHeightChanged(double height)
+    {
+        State.SetPitchFormat(PitchFormat.Custom, State.Diagram.CustomWidth ?? 100.0, height);
+        await OnChanged.InvokeAsync();
+    }
+}

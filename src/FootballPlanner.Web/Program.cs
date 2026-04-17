@@ -20,7 +20,9 @@ builder.Services.AddOidcAuthentication(options =>
 });
 
 builder.Services.AddScoped<AuthorizationMessageHandler>();
+builder.Services.AddScoped<AuthRedirectHandler>();
 builder.Services.AddHttpClient<ApiClient>(client => client.BaseAddress = new Uri(apiBaseUrl))
+    .AddHttpMessageHandler<AuthRedirectHandler>()
     .AddHttpMessageHandler(sp =>
     {
         var handler = sp.GetRequiredService<AuthorizationMessageHandler>();

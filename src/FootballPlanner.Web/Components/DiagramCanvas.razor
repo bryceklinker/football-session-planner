@@ -1,4 +1,6 @@
 @using FootballPlanner.Web.Models
+@using Microsoft.JSInterop
+@implements IAsyncDisposable
 @inject IJSRuntime JS
 
 <svg id="@_svgId"
@@ -32,6 +34,7 @@
               width="@goal.Width" height="@(goal.Width / 7.0)"
               fill="none" stroke="white" stroke-width="0.8"
               style="cursor:pointer;"
+              @onmousedown="e => HandleElementMouseDown(gref, e)"
               @onclick:stopPropagation="true"
               @onclick="() => HandleElementClick(gref)"/>
     }
@@ -45,6 +48,7 @@
                  points="@cone.X,@(cone.Y * _pitchHeight / 100 - 2) @(cone.X - 1.5),@(cone.Y * _pitchHeight / 100 + 1) @(cone.X + 1.5),@(cone.Y * _pitchHeight / 100 + 1)"
                  fill="#f0a500"
                  style="cursor:pointer;"
+                 @onmousedown="e => HandleElementMouseDown(cref, e)"
                  @onclick:stopPropagation="true"
                  @onclick="() => HandleElementClick(cref)"/>
     }
@@ -58,6 +62,7 @@
                 cx="@coach.X" cy="@(coach.Y * _pitchHeight / 100)"
                 r="3" fill="#f0a500" stroke="white" stroke-width="0.5"
                 style="cursor:pointer;"
+                @onmousedown="e => HandleElementMouseDown(kref, e)"
                 @onclick:stopPropagation="true"
                 @onclick="() => HandleElementClick(kref)"/>
         @((MarkupString)$"<text x=\"{coach.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" y=\"{(coach.Y * _pitchHeight / 100 + 0.8).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"white\" font-size=\"2.5\" font-weight=\"bold\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(coach.Label)}</text>")
@@ -75,6 +80,7 @@
                     cx="@player.X" cy="@(player.Y * _pitchHeight / 100)"
                     r="3" fill="@team.Color" stroke="white" stroke-width="0.5"
                     style="cursor:pointer;"
+                    @onmousedown="e => HandleElementMouseDown(pref, e)"
                     @onclick:stopPropagation="true"
                     @onclick="() => HandleElementClick(pref)"/>
             @if (!string.IsNullOrEmpty(player.Label))
@@ -103,6 +109,7 @@
               fill="none"
               marker-end="url(#@markerId)"
               style="cursor:pointer;"
+              @onmousedown="e => HandleElementMouseDown(aref, e)"
               @onclick:stopPropagation="true"
               @onclick="() => HandleElementClick(aref)"/>
     }
@@ -129,6 +136,8 @@
     private readonly string _svgId = $"pitch-{Guid.NewGuid():N}";
     private double _ghostX = -1;
     private double _ghostY = -1;
+    private string? _draggingRef;
+    private DotNetObjectReference<DiagramCanvas>? _dotNetRef;
 
     private double _pitchHeight => State.Diagram.PitchFormat switch
     {
@@ -154,6 +163,36 @@
         _ when IsPlacementTool => "crosshair",
         _ => "default"
     };
+
+    private async Task HandleElementMouseDown(string elementRef, MouseEventArgs e)
+    {
+        if (State.ActiveTool != "move") return;
+        _draggingRef = elementRef;
+        State.BeginDrag();
+        _dotNetRef ??= DotNetObjectReference.Create(this);
+        try
+        {
+            await JS.InvokeVoidAsync("diagramInterop.startDrag", _dotNetRef, _svgId);
+        }
+        catch (JSException) { /* test environment — drag won't fire JS callbacks */ }
+    }
+
+    [JSInvokable]
+    public void OnDragMove(double x, double y)
+    {
+        if (_draggingRef == null) return;
+        State.PreviewMove(_draggingRef, x, y);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public void OnDragComplete(double x, double y)
+    {
+        if (_draggingRef == null) return;
+        State.PreviewMove(_draggingRef, x, y);
+        _draggingRef = null;
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     private async Task HandleSvgClick(MouseEventArgs e)
     {
@@ -249,6 +288,13 @@
         }
 
         return $"M {x1.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {y1.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} Q {cx.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {cy.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {x2.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {y2.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("diagramInterop.cleanup", _svgId); }
+        catch (JSException) { /* ignore — component may be disposing during test teardown */ }
+        _dotNetRef?.Dispose();
     }
 
     private record SvgCoords(double X, double Y);

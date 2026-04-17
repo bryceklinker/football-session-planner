@@ -103,4 +103,25 @@ public class DiagramCanvasTests : TestContext
 
         Assert.True(fired);
     }
+
+    [Fact]
+    public void OnDragMove_UpdatesElementPosition()
+    {
+        var state = DefaultState();
+        state.SetTool("move");
+        state.PlaceCone(10.0, 20.0);
+
+        var cut = RenderComponent<DiagramCanvas>(
+            p => p.Add(x => x.State, state));
+
+        // Mousedown on the cone element starts the drag (sets _draggingRef)
+        cut.Find("polygon[data-element^='cones']").MouseDown();
+
+        // Simulate JS callback
+        cut.Instance.OnDragMove(50.0, 60.0);
+        cut.Render();
+
+        Assert.Equal(50.0, state.Diagram.Cones[0].X);
+        Assert.Equal(60.0, state.Diagram.Cones[0].Y);
+    }
 }

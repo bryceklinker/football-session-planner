@@ -182,6 +182,8 @@
     {
         if (_draggingRef == null) return;
         State.PreviewMove(_draggingRef, x, y);
+        // JS callbacks arrive off Blazor's sync context, so StateHasChanged()
+        // can't be called directly — InvokeAsync marshals it back onto the renderer thread.
         _ = InvokeAsync(StateHasChanged);
     }
 
@@ -191,6 +193,8 @@
         if (_draggingRef == null) return;
         State.PreviewMove(_draggingRef, x, y);
         _draggingRef = null;
+        // JS callbacks arrive off Blazor's sync context, so StateHasChanged()
+        // can't be called directly — InvokeAsync marshals it back onto the renderer thread.
         _ = InvokeAsync(StateHasChanged);
     }
 
@@ -292,6 +296,8 @@
 
     public async ValueTask DisposeAsync()
     {
+        if (_draggingRef != null)
+            State.Undo();
         try { await JS.InvokeVoidAsync("diagramInterop.cleanup", _svgId); }
         catch (JSException) { /* ignore — component may be disposing during test teardown */ }
         _dotNetRef?.Dispose();

@@ -31,7 +31,7 @@ export function startDrag(dotNetRef, svgId) {
     };
 
     svg.addEventListener('mousemove', onMove);
-    svg.addEventListener('mouseup', onUp);
+    window.addEventListener('mouseup', onUp);
     _listeners.set(svgId, { move: onMove, up: onUp, svg });
 }
 
@@ -39,6 +39,6 @@ export function cleanup(svgId) {
     const entry = _listeners.get(svgId);
     if (!entry) return;
     entry.svg.removeEventListener('mousemove', entry.move);
-    entry.svg.removeEventListener('mouseup', entry.up);
+    window.removeEventListener('mouseup', entry.up);
     _listeners.delete(svgId);
 }

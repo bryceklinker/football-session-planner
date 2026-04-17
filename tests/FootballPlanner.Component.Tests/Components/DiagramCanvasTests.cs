@@ -124,4 +124,25 @@ public class DiagramCanvasTests : TestContext
         Assert.Equal(50.0, state.Diagram.Cones[0].X);
         Assert.Equal(60.0, state.Diagram.Cones[0].Y);
     }
+
+    [Fact]
+    public void OnMouseDown_WithNonMoveTool_DoesNotStartDrag()
+    {
+        var state = DefaultState();
+        state.SetTool("player"); // not "move"
+        state.PlaceCone(10.0, 20.0);
+
+        var cut = RenderComponent<DiagramCanvas>(
+            p => p.Add(x => x.State, state));
+
+        cut.Find("polygon[data-element^='cones']").MouseDown();
+
+        // OnDragMove should be a no-op since _draggingRef was never set
+        cut.Instance.OnDragMove(50.0, 60.0);
+        cut.Render();
+
+        // Position should be unchanged
+        Assert.Equal(10.0, state.Diagram.Cones[0].X);
+        Assert.Equal(20.0, state.Diagram.Cones[0].Y);
+    }
 }

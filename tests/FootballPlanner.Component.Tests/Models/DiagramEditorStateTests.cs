@@ -258,10 +258,8 @@ public class DiagramEditorStateTests
     public void BeginDrag_PushesUndoSnapshot()
     {
         var state = new DiagramEditorState();
-        state.PlaceCone(10.0, 20.0);
-
+        Assert.False(state.CanUndo); // baseline — nothing pushed yet
         state.BeginDrag();
-
         Assert.True(state.CanUndo);
     }
 

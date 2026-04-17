@@ -145,4 +145,29 @@ public class DiagramCanvasTests : TestContext
         Assert.Equal(10.0, state.Diagram.Cones[0].X);
         Assert.Equal(20.0, state.Diagram.Cones[0].Y);
     }
+
+    [Fact]
+    public void OnDragComplete_UpdatesPositionAndClearsDragging()
+    {
+        var state = DefaultState();
+        state.SetTool("move");
+        state.PlaceCone(10.0, 20.0);
+
+        var cut = RenderComponent<DiagramCanvas>(
+            p => p.Add(x => x.State, state));
+
+        cut.Find("polygon[data-element^='cones']").MouseDown();
+        cut.Instance.OnDragComplete(50.0, 60.0);
+        cut.Render();
+
+        Assert.Equal(50.0, state.Diagram.Cones[0].X);
+        Assert.Equal(60.0, state.Diagram.Cones[0].Y);
+
+        // After OnDragComplete, _draggingRef is cleared — further OnDragMove is a no-op
+        cut.Instance.OnDragMove(99.0, 99.0);
+        cut.Render();
+
+        Assert.Equal(50.0, state.Diagram.Cones[0].X);
+        Assert.Equal(60.0, state.Diagram.Cones[0].Y);
+    }
 }

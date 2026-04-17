@@ -178,6 +178,8 @@ public class DiagramEditorState
             "coaches" => diagram with { Coaches = ReplaceAt(diagram.Coaches, idx, c => c with { X = x, Y = y }) },
             "cones"   => diagram with { Cones   = ReplaceAt(diagram.Cones,   idx, c => c with { X = x, Y = y }) },
             "goals"   => diagram with { Goals   = ReplaceAt(diagram.Goals,   idx, g => g with { X = x, Y = y }) },
+            // Dragging an arrow repositions its endpoint, redirecting where it points.
+            // The start point (X1, Y1) remains fixed; the control point is recomputed as the midpoint.
             "arrows"  => diagram with { Arrows  = ReplaceAt(diagram.Arrows,  idx,
                 a => a with { X2 = x, Y2 = y, Cx = (a.X1 + x) / 2.0, Cy = (a.Y1 + y) / 2.0 }) },
             _ => diagram

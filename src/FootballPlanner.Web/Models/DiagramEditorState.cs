@@ -88,6 +88,11 @@ public class DiagramEditorState
         Diagram = ApplyMove(Diagram, elementRef, x, y);
     }
 
+    public void BeginDrag() => PushUndo();
+
+    public void PreviewMove(string elementRef, double x, double y)
+        => Diagram = ApplyMove(Diagram, elementRef, x, y);
+
     public void DeleteElement(string elementRef)
     {
         PushUndo();

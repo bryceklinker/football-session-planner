@@ -253,4 +253,35 @@ public class DiagramEditorStateTests
         Assert.Equal(2, state.Diagram.Teams.Count);
         Assert.False(state.CanUndo);
     }
+
+    [Fact]
+    public void BeginDrag_PushesUndoSnapshot()
+    {
+        var state = new DiagramEditorState();
+        state.PlaceCone(10.0, 20.0);
+
+        state.BeginDrag();
+
+        Assert.True(state.CanUndo);
+    }
+
+    [Fact]
+    public void PreviewMove_UpdatesPositionWithoutAddingToUndoStack()
+    {
+        var state = new DiagramEditorState();
+        state.PlaceCone(10.0, 20.0);
+        // Reset undo stack to a known state
+        state.Initialize(state.Diagram);
+        state.PlaceCone(10.0, 20.0); // one cone at index 0, one undo entry
+
+        state.PreviewMove("cones/0", 50.0, 60.0);
+
+        // Position updated
+        Assert.Equal(50.0, state.Diagram.Cones[0].X);
+        Assert.Equal(60.0, state.Diagram.Cones[0].Y);
+        // Undo stack NOT grown — still only the one entry from PlaceCone
+        Assert.True(state.CanUndo);
+        state.Undo();
+        Assert.False(state.CanUndo); // no further entries
+    }
 }

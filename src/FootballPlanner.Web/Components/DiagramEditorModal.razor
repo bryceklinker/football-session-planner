@@ -10,66 +10,7 @@
     <DialogContent>
         <div class="d-flex gap-2" style="height:100%;overflow:hidden;">
             <!-- Left toolbar -->
-            <div style="width:44px;display:flex;flex-direction:column;gap:4px;align-items:center;padding:4px 0;">
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Place</MudText>
-                <span data-testid="tool-player" @onclick="@(() => { _state.SetTool("player"); StateHasChanged(); })">
-                    <MudIconButton Icon="@Icons.Material.Filled.Person"
-                                   Size="Size.Small"
-                                   Color="@(_state.ActiveTool == "player" ? Color.Primary : Color.Default)"
-                                   title="Place player" />
-                </span>
-                <span data-testid="tool-coach" @onclick="@(() => { _state.SetTool("coach"); StateHasChanged(); })">
-                    <MudIconButton Icon="@Icons.Material.Filled.SportsHandball"
-                                   Size="Size.Small"
-                                   Color="@(_state.ActiveTool == "coach" ? Color.Primary : Color.Default)"
-                                   title="Place coach" />
-                </span>
-                <span data-testid="tool-cone" @onclick="@(() => { _state.SetTool("cone"); StateHasChanged(); })">
-                    <MudIconButton Icon="@Icons.Material.Filled.ChangeHistory"
-                                   Size="Size.Small"
-                                   Color="@(_state.ActiveTool == "cone" ? Color.Primary : Color.Default)"
-                                   title="Place cone" />
-                </span>
-                <span data-testid="tool-goal" @onclick="@(() => { _state.SetTool("goal"); StateHasChanged(); })">
-                    <MudIconButton Icon="@Icons.Material.Filled.SportsSoccer"
-                                   Size="Size.Small"
-                                   Color="@(_state.ActiveTool == "goal" ? Color.Primary : Color.Default)"
-                                   title="Place goal" />
-                </span>
-                <MudDivider />
-                <MudText Typo="Typo.caption" Color="Color.Secondary">Arrow</MudText>
-                <span data-testid="tool-arrow-run" @onclick="@(() => { _state.SetTool("arrow-run"); StateHasChanged(); })">
-                    <MudIconButton Icon="@Icons.Material.Filled.ArrowForward"
-                                   Size="Size.Small"
-                                   Color="@(_state.ActiveTool == "arrow-run" ? Color.Primary : Color.Default)"
-                                   title="Run arrow" />
-                </span>
-                <span data-testid="tool-arrow-pass" @onclick="@(() => { _state.SetTool("arrow-pass"); StateHasChanged(); })">
-                    <MudIconButton Icon="@Icons.Material.Filled.ArrowRightAlt"
-                                   Size="Size.Small"
-                                   Color="@(_state.ActiveTool == "arrow-pass" ? Color.Primary : Color.Default)"
-                                   title="Pass arrow" />
-                </span>
-                <span data-testid="tool-arrow-dribble" @onclick="@(() => { _state.SetTool("arrow-dribble"); StateHasChanged(); })">
-                    <MudIconButton Icon="@Icons.Material.Filled.Waves"
-                                   Size="Size.Small"
-                                   Color="@(_state.ActiveTool == "arrow-dribble" ? Color.Primary : Color.Default)"
-                                   title="Dribble arrow" />
-                </span>
-                <MudDivider />
-                <span data-testid="tool-move" @onclick="@(() => { _state.SetTool("move"); StateHasChanged(); })">
-                    <MudIconButton Icon="@Icons.Material.Filled.OpenWith"
-                                   Size="Size.Small"
-                                   Color="@(_state.ActiveTool == "move" ? Color.Primary : Color.Default)"
-                                   title="Move element" />
-                </span>
-                <span data-testid="tool-delete" @onclick="@(() => { _state.SetTool("delete"); StateHasChanged(); })">
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                   Size="Size.Small"
-                                   Color="@(_state.ActiveTool == "delete" ? Color.Primary : Color.Default)"
-                                   title="Delete element" />
-                </span>
-            </div>
+            <DiagramToolbar State="_state" OnChanged="HandleToolbarChanged" />
 
             <!-- Main canvas -->
             <div style="flex:1;overflow:auto;">
@@ -89,12 +30,24 @@
         </div>
     </DialogContent>
     <DialogActions>
-        <span data-testid="undo" @onclick="Undo"><MudButton Disabled="@(!_state.CanUndo)" StartIcon="@Icons.Material.Filled.Undo">Undo</MudButton></span>
-        <span data-testid="redo" @onclick="Redo"><MudButton Disabled="@(!_state.CanRedo)" StartIcon="@Icons.Material.Filled.Redo">Redo</MudButton></span>
-        <span data-testid="clear" @onclick="Clear"><MudButton Color="Color.Warning">Clear</MudButton></span>
+        <MudButton aria-label="Undo"
+                   Disabled="@(!_state.CanUndo)"
+                   StartIcon="@Icons.Material.Filled.Undo"
+                   OnClick="Undo">Undo</MudButton>
+        <MudButton aria-label="Redo"
+                   Disabled="@(!_state.CanRedo)"
+                   StartIcon="@Icons.Material.Filled.Redo"
+                   OnClick="Redo">Redo</MudButton>
+        <MudButton aria-label="Clear"
+                   Color="Color.Warning"
+                   OnClick="Clear">Clear</MudButton>
         <MudSpacer />
-        <span data-testid="cancel" @onclick="Cancel"><MudButton>Cancel</MudButton></span>
-        <span data-testid="save" @onclick="SaveAsync"><MudButton Color="Color.Primary" Variant="Variant.Filled">Save Diagram</MudButton></span>
+        <MudButton aria-label="Cancel"
+                   OnClick="Cancel">Cancel</MudButton>
+        <MudButton aria-label="Save Diagram"
+                   Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="SaveAsync">Save Diagram</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -119,6 +72,8 @@
         }
         _state.Initialize(initial);
     }
+
+    private void HandleToolbarChanged() => StateHasChanged();
 
     private void PlacePlayer((double X, double Y) coords) { _state.PlacePlayer(coords.X, coords.Y); StateHasChanged(); }
     private void PlaceCoach((double X, double Y) coords) { _state.PlaceCoach(coords.X, coords.Y); StateHasChanged(); }

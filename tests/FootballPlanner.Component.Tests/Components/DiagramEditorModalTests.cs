@@ -12,17 +12,29 @@ namespace FootballPlanner.Component.Tests.Components;
 
 public class DiagramEditorModalTests : TestContext
 {
+    private readonly TestHttpMessageHandler _httpHandler = new();
+
     public DiagramEditorModalTests()
     {
         Services.AddMudServices();
-        Services.AddSingleton(new HttpClient { BaseAddress = new Uri("http://localhost") });
+        Services.AddSingleton(new HttpClient(_httpHandler) { BaseAddress = new Uri("http://localhost") });
         Services.AddScoped<ApiClient>();
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
 
     private IRenderedComponent<MudDialogProvider> SetupDialogProvider()
+        => RenderComponent<MudDialogProvider>();
+
+    private sealed class TestHttpMessageHandler : HttpMessageHandler
     {
-        return RenderComponent<MudDialogProvider>();
+        public HttpRequestMessage? LastRequest { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            LastRequest = request;
+            return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK));
+        }
     }
 
     [Fact]
@@ -46,7 +58,6 @@ public class DiagramEditorModalTests : TestContext
     {
         var provider = SetupDialogProvider();
         var dialogService = Services.GetRequiredService<IDialogService>();
-
         var parameters = new DialogParameters
         {
             [nameof(DiagramEditorModal.InitialDiagramJson)] = (string?)null
@@ -54,14 +65,12 @@ public class DiagramEditorModalTests : TestContext
         await provider.InvokeAsync(() => dialogService.ShowAsync<DiagramEditorModal>("Edit Diagram", parameters,
             new DialogOptions { FullScreen = true }));
 
-        // Player tool button is not active before clicking
-        var playerBtnBefore = provider.Find("[data-testid='tool-player'] button");
+        var playerBtnBefore = provider.Find("[aria-label='Place player']");
         Assert.DoesNotContain("mud-primary-text", playerBtnBefore.ClassName);
 
-        provider.Find("[data-testid='tool-player']").Click();
+        provider.Find("[aria-label='Place player']").Click();
 
-        // After clicking, MudBlazor renders the primary Color as mud-primary-text class on the button
-        var playerBtnAfter = provider.Find("[data-testid='tool-player'] button");
+        var playerBtnAfter = provider.Find("[aria-label='Place player']");
         Assert.Contains("mud-primary-text", playerBtnAfter.ClassName);
     }
 
@@ -70,7 +79,6 @@ public class DiagramEditorModalTests : TestContext
     {
         var provider = SetupDialogProvider();
         var dialogService = Services.GetRequiredService<IDialogService>();
-
         var parameters = new DialogParameters
         {
             [nameof(DiagramEditorModal.InitialDiagramJson)] = (string?)null
@@ -78,12 +86,10 @@ public class DiagramEditorModalTests : TestContext
         await provider.InvokeAsync(() => dialogService.ShowAsync<DiagramEditorModal>("Edit Diagram", parameters,
             new DialogOptions { FullScreen = true }));
 
-        // Undo button is disabled when the undo stack is empty
-        var undoBtn = provider.Find("[data-testid='undo'] button");
+        var undoBtn = provider.Find("[aria-label='Undo']");
         Assert.True(undoBtn.HasAttribute("disabled"));
 
-        // Click does not throw even though stack is empty
-        provider.Find("[data-testid='undo']").Click();
+        provider.Find("[aria-label='Undo']").Click();
     }
 
     [Fact]
@@ -91,7 +97,6 @@ public class DiagramEditorModalTests : TestContext
     {
         var provider = SetupDialogProvider();
         var dialogService = Services.GetRequiredService<IDialogService>();
-
         var parameters = new DialogParameters
         {
             [nameof(DiagramEditorModal.InitialDiagramJson)] = (string?)null
@@ -99,8 +104,7 @@ public class DiagramEditorModalTests : TestContext
         await provider.InvokeAsync(() => dialogService.ShowAsync<DiagramEditorModal>("Edit Diagram", parameters,
             new DialogOptions { FullScreen = true }));
 
-        // Should not throw; pitch SVG should still be present after clear
-        provider.Find("[data-testid='clear']").Click();
+        provider.Find("[aria-label='Clear']").Click();
 
         Assert.NotNull(provider.Find("svg"));
     }
@@ -133,5 +137,149 @@ public class DiagramEditorModalTests : TestContext
 
         // The SVG should contain a circle for the player element
         Assert.Contains("<circle", provider.Markup);
+    }
+
+    [Fact]
+    public async Task ClickCancel_ClosesDialogAsCanceled()
+    {
+        var provider = SetupDialogProvider();
+        var dialogService = Services.GetRequiredService<IDialogService>();
+        var parameters = new DialogParameters
+        {
+            [nameof(DiagramEditorModal.ActivityId)] = 1,
+            [nameof(DiagramEditorModal.InitialDiagramJson)] = (string?)null
+        };
+        var dialogRef = await provider.InvokeAsync(() =>
+            dialogService.ShowAsync<DiagramEditorModal>("Edit Diagram", parameters,
+                new DialogOptions { FullScreen = true }));
+
+        provider.Find("[aria-label='Cancel']").Click();
+
+        var result = await dialogRef.Result;
+        Assert.True(result.Canceled);
+        Assert.Null(_httpHandler.LastRequest); // no API call made
+    }
+
+    [Fact]
+    public async Task ClickSave_CallsApiAndClosesDialogWithJson()
+    {
+        var provider = SetupDialogProvider();
+        var dialogService = Services.GetRequiredService<IDialogService>();
+        var parameters = new DialogParameters
+        {
+            [nameof(DiagramEditorModal.ActivityId)] = 42,
+            [nameof(DiagramEditorModal.InitialDiagramJson)] = (string?)null
+        };
+        var dialogRef = await provider.InvokeAsync(() =>
+            dialogService.ShowAsync<DiagramEditorModal>("Edit Diagram", parameters,
+                new DialogOptions { FullScreen = true }));
+
+        await provider.InvokeAsync(() => provider.Find("[aria-label='Save Diagram']").Click());
+
+        Assert.NotNull(_httpHandler.LastRequest);
+        Assert.Equal(HttpMethod.Put, _httpHandler.LastRequest!.Method);
+        Assert.Contains("activities/42/diagram", _httpHandler.LastRequest.RequestUri!.ToString());
+
+        var result = await dialogRef.Result;
+        Assert.False(result.Canceled);
+        Assert.IsType<string>(result.Data);
+    }
+
+    [Fact]
+    public async Task SelectPlayerTool_ThenClickCanvas_PlacesPlayerCircleOnSvg()
+    {
+        var provider = SetupDialogProvider();
+        var dialogService = Services.GetRequiredService<IDialogService>();
+        var parameters = new DialogParameters
+        {
+            [nameof(DiagramEditorModal.InitialDiagramJson)] = (string?)null
+        };
+        await provider.InvokeAsync(() => dialogService.ShowAsync<DiagramEditorModal>("Edit Diagram", parameters,
+            new DialogOptions { FullScreen = true }));
+
+        provider.Find("[aria-label='Place player']").Click();
+        provider.Find("svg[id^='pitch-']").Click();
+
+        Assert.NotEmpty(provider.FindAll("circle[data-element]"));
+    }
+
+    [Fact]
+    public async Task SelectConeTool_ThenClickCanvas_PlacesConePolygonOnSvg()
+    {
+        var provider = SetupDialogProvider();
+        var dialogService = Services.GetRequiredService<IDialogService>();
+        var parameters = new DialogParameters
+        {
+            [nameof(DiagramEditorModal.InitialDiagramJson)] = (string?)null
+        };
+        await provider.InvokeAsync(() => dialogService.ShowAsync<DiagramEditorModal>("Edit Diagram", parameters,
+            new DialogOptions { FullScreen = true }));
+
+        provider.Find("[aria-label='Place cone']").Click();
+        provider.Find("svg[id^='pitch-']").Click();
+
+        Assert.NotEmpty(provider.FindAll("polygon[data-element^='cones']"));
+    }
+
+    [Fact]
+    public async Task SelectArrowRunTool_ThenClickCanvasTwice_PlacesArrowPathOnSvg()
+    {
+        var provider = SetupDialogProvider();
+        var dialogService = Services.GetRequiredService<IDialogService>();
+        var parameters = new DialogParameters
+        {
+            [nameof(DiagramEditorModal.InitialDiagramJson)] = (string?)null
+        };
+        await provider.InvokeAsync(() => dialogService.ShowAsync<DiagramEditorModal>("Edit Diagram", parameters,
+            new DialogOptions { FullScreen = true }));
+
+        provider.Find("[aria-label='Run arrow']").Click();
+        provider.Find("svg[id^='pitch-']").Click(); // sets ArrowStartPoint
+        provider.Find("svg[id^='pitch-']").Click(); // completes arrow
+
+        Assert.NotEmpty(provider.FindAll("path[data-element^='arrows']"));
+    }
+
+    [Fact]
+    public async Task UndoAfterPlacement_RemovesElement()
+    {
+        var provider = SetupDialogProvider();
+        var dialogService = Services.GetRequiredService<IDialogService>();
+        var parameters = new DialogParameters
+        {
+            [nameof(DiagramEditorModal.InitialDiagramJson)] = (string?)null
+        };
+        await provider.InvokeAsync(() => dialogService.ShowAsync<DiagramEditorModal>("Edit Diagram", parameters,
+            new DialogOptions { FullScreen = true }));
+
+        provider.Find("[aria-label='Place cone']").Click();
+        provider.Find("svg[id^='pitch-']").Click();
+        Assert.NotEmpty(provider.FindAll("polygon[data-element^='cones']"));
+
+        provider.Find("[aria-label='Undo']").Click();
+
+        Assert.Empty(provider.FindAll("polygon[data-element^='cones']"));
+    }
+
+    [Fact]
+    public async Task RedoAfterUndo_RestoresElement()
+    {
+        var provider = SetupDialogProvider();
+        var dialogService = Services.GetRequiredService<IDialogService>();
+        var parameters = new DialogParameters
+        {
+            [nameof(DiagramEditorModal.InitialDiagramJson)] = (string?)null
+        };
+        await provider.InvokeAsync(() => dialogService.ShowAsync<DiagramEditorModal>("Edit Diagram", parameters,
+            new DialogOptions { FullScreen = true }));
+
+        provider.Find("[aria-label='Place cone']").Click();
+        provider.Find("svg[id^='pitch-']").Click();
+        provider.Find("[aria-label='Undo']").Click();
+        Assert.Empty(provider.FindAll("polygon[data-element^='cones']"));
+
+        provider.Find("[aria-label='Redo']").Click();
+
+        Assert.NotEmpty(provider.FindAll("polygon[data-element^='cones']"));
     }
 }

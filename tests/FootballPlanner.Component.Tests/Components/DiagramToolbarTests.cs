@@ -112,7 +112,12 @@ public class DiagramToolbarTests : TestContext
     {
         var state = DefaultState();
         state.SetPitchFormat(PitchFormat.Custom, customWidth: 100.0, customHeight: 64.0);
-        var cut = RenderComponent<DiagramToolbar>(p => p.Add(x => x.State, state));
+        var onChangedFired = false;
+        var cut = RenderComponent<DiagramToolbar>(p =>
+        {
+            p.Add(x => x.State, state);
+            p.Add(x => x.OnChanged, () => onChangedFired = true);
+        });
 
         // fields[0] = width, fields[1] = height
         var fields = cut.FindComponents<MudNumericField<double>>();
@@ -120,6 +125,7 @@ public class DiagramToolbarTests : TestContext
 
         Assert.Equal(80.0, state.Diagram.CustomWidth);
         Assert.Equal(64.0, state.Diagram.CustomHeight); // unchanged
+        Assert.True(onChangedFired);
     }
 
     [Fact]
@@ -127,12 +133,18 @@ public class DiagramToolbarTests : TestContext
     {
         var state = DefaultState();
         state.SetPitchFormat(PitchFormat.Custom, customWidth: 100.0, customHeight: 64.0);
-        var cut = RenderComponent<DiagramToolbar>(p => p.Add(x => x.State, state));
+        var onChangedFired = false;
+        var cut = RenderComponent<DiagramToolbar>(p =>
+        {
+            p.Add(x => x.State, state);
+            p.Add(x => x.OnChanged, () => onChangedFired = true);
+        });
 
         var fields = cut.FindComponents<MudNumericField<double>>();
         await cut.InvokeAsync(() => fields[1].Instance.ValueChanged.InvokeAsync(50.0));
 
         Assert.Equal(100.0, state.Diagram.CustomWidth); // unchanged
         Assert.Equal(50.0, state.Diagram.CustomHeight);
+        Assert.True(onChangedFired);
     }
 }

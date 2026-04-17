@@ -106,7 +106,7 @@ public class DiagramEditorModalTests : TestContext
 
         provider.Find("[aria-label='Clear']").Click();
 
-        Assert.NotNull(provider.Find("svg"));
+        Assert.NotNull(provider.Find("svg[id^='pitch-']"));
     }
 
     [Fact]

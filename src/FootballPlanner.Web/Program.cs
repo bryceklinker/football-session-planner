@@ -10,7 +10,7 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
-    ?? $"{builder.HostEnvironment.BaseAddress}api";
+    ?? $"{builder.HostEnvironment.BaseAddress}api/";
 
 builder.Services.AddOidcAuthentication(options =>
 {

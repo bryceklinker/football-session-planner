@@ -27,7 +27,7 @@ public class DiagramEditorState
 
     public void SetTool(string tool)
     {
-        ActiveTool = tool;
+        ActiveTool = ActiveTool == tool ? null : tool;
         ArrowStartPoint = null;
     }
 

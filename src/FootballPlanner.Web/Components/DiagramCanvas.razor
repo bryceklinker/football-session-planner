@@ -4,8 +4,8 @@
 @inject IJSRuntime JS
 
 <svg id="@_svgId"
-     viewBox="-3 0 106 @_pitchHeight.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
-     style="width:100%;display:block;background:#2d5a27;cursor:@_cursor;"
+     viewBox="0 0 100 @_pitchHeight.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
+     style="width:100%;display:block;background:#2d5a27;cursor:@_cursor;overflow:visible;"
      @onclick="HandleSvgClick"
      @onmousemove="HandleMouseMove">
 

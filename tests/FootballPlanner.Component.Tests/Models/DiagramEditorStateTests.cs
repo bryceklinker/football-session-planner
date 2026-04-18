@@ -284,6 +284,23 @@ public class DiagramEditorStateTests
     }
 
     [Fact]
+    public void SetTool_WhenInactive_ActivatesTool()
+    {
+        var state = new DiagramEditorState();
+        state.SetTool("player");
+        Assert.Equal("player", state.ActiveTool);
+    }
+
+    [Fact]
+    public void SetTool_WhenAlreadyActive_DeactivatesTool()
+    {
+        var state = new DiagramEditorState();
+        state.SetTool("player");
+        state.SetTool("player");
+        Assert.Null(state.ActiveTool);
+    }
+
+    [Fact]
     public void SetPitchFormat_UpdatesDiagramPitchFormat()
     {
         var state = new DiagramEditorState();

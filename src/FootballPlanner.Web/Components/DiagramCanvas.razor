@@ -4,25 +4,19 @@
 @inject IJSRuntime JS
 
 <svg id="@_svgId"
-     viewBox="0 0 100 @_pitchHeight.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
+     viewBox="-3 0 106 @_pitchHeight.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
      style="width:100%;display:block;background:#2d5a27;cursor:@_cursor;"
      @onclick="HandleSvgClick"
      @onmousemove="HandleMouseMove">
 
     <defs>
-        <marker id="arr-run-@_svgId"    markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="white"/></marker>
-        <marker id="arr-pass-@_svgId"   markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#90caf9"/></marker>
-        <marker id="arr-dribble-@_svgId" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#ffcc80"/></marker>
+        <marker id="arr-run-@_svgId"     markerWidth="4" markerHeight="3" refX="4" refY="1.5" orient="auto"><polygon points="0 0,4 1.5,0 3" fill="white"/></marker>
+        <marker id="arr-pass-@_svgId"    markerWidth="4" markerHeight="3" refX="4" refY="1.5" orient="auto"><polygon points="0 0,4 1.5,0 3" fill="#90caf9"/></marker>
+        <marker id="arr-dribble-@_svgId" markerWidth="4" markerHeight="3" refX="4" refY="1.5" orient="auto"><polygon points="0 0,4 1.5,0 3" fill="#ffcc80"/></marker>
     </defs>
 
-    <!-- Pitch lines -->
-    <rect x="2" y="@(2 * _pitchHeight / 100)"
-          width="96" height="@(96 * _pitchHeight / 100)"
-          fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="0.5"/>
-    <line x1="50" y1="@(2 * _pitchHeight / 100)" x2="50" y2="@(98 * _pitchHeight / 100)"
-          stroke="rgba(255,255,255,0.4)" stroke-width="0.3"/>
-    <ellipse cx="50" cy="@(50 * _pitchHeight / 100)" rx="9.15" ry="@(9.15 * _pitchHeight / 100)"
-             fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="0.3"/>
+    <!-- Pitch markings -->
+    @((MarkupString)BuildPitchMarkings())
 
     <!-- Goals -->
     @for (var gi = 0; gi < State.Diagram.Goals.Count; gi++)
@@ -104,7 +98,7 @@
         <path data-element="@aref"
               d="@BuildArrowPath(arrow)"
               stroke="@stroke"
-              stroke-width="@(arrow.Style == ArrowStyle.Pass ? "1.5" : "2")"
+              stroke-width="@(arrow.Style == ArrowStyle.Pass ? "0.8" : "1")"
               stroke-dasharray="@dasharray"
               fill="none"
               marker-end="url(#@markerId)"
@@ -141,16 +135,150 @@
 
     private double _pitchHeight => State.Diagram.PitchFormat switch
     {
-        PitchFormat.ElevenVElevenFull  => 64.0,
-        PitchFormat.ElevenVElevenHalf  => 128.0,
-        PitchFormat.NineVNineFull      => 62.5,
-        PitchFormat.NineVNineHalf      => 125.0,
-        PitchFormat.SevenVSevenFull    => 66.7,
-        PitchFormat.SevenVSevenHalf    => 133.3,
+        PitchFormat.ElevenVElevenFull  => 64.76,   // 68m / 105m × 100
+        PitchFormat.ElevenVElevenHalf  => 129.52,  // 68m / 52.5m × 100
+        PitchFormat.NineVNineFull      => 62.5,    // 50m / 80m × 100
+        PitchFormat.NineVNineHalf      => 125.0,   // 50m / 40m × 100
+        PitchFormat.SevenVSevenFull    => 66.67,   // 40m / 60m × 100
+        PitchFormat.SevenVSevenHalf    => 133.33,  // 40m / 30m × 100
         PitchFormat.Custom when State.Diagram is { CustomHeight: { } h, CustomWidth: { } w }
             => h / w * 100.0,
-        _ => 64.0
+        _ => 64.76
     };
+
+    // Real-world pitch dimensions and marking positions per format.
+    // LengthM = goal-to-goal distance (or goal-to-centre for half-field formats).
+    // WidthM  = touchline-to-touchline.
+    private record PitchDimensions(
+        double LengthM, double WidthM,
+        double PenAreaDepthM, double PenAreaHalfWidthM,
+        double SixYardDepthM, double SixYardHalfWidthM,
+        double PenSpotM, double CircleRadiusM, double GoalHalfWidthM);
+
+    private PitchDimensions _dims => State.Diagram.PitchFormat switch
+    {
+        PitchFormat.ElevenVElevenFull => new(105, 68, 16.5, 20.16, 5.5, 9.16, 11, 9.15, 3.66),
+        PitchFormat.ElevenVElevenHalf => new(52.5, 68, 16.5, 20.16, 5.5, 9.16, 11, 9.15, 3.66),
+        PitchFormat.NineVNineFull     => new(80, 50, 12, 14, 4, 6, 9, 9.15, 2.5),
+        PitchFormat.NineVNineHalf     => new(40, 50, 12, 14, 4, 6, 9, 9.15, 2.5),
+        PitchFormat.SevenVSevenFull   => new(60, 40, 10, 10, 3.5, 4, 7, 7.0, 2.0),
+        PitchFormat.SevenVSevenHalf   => new(30, 40, 10, 10, 3.5, 4, 7, 7.0, 2.0),
+        _ => new(105, 68, 16.5, 20.16, 5.5, 9.16, 11, 9.15, 3.66)
+    };
+
+    private bool _isHalfField => State.Diagram.PitchFormat is
+        PitchFormat.ElevenVElevenHalf or PitchFormat.NineVNineHalf or PitchFormat.SevenVSevenHalf;
+
+    // Convert metres from left goal line → SVG x (field occupies x 2–98).
+    private double Fx(double m) => 2 + (m / _dims.LengthM) * 96;
+
+    // Convert metres from top touchline → SVG y (field occupies y Fy(0)–Fy(WidthM)).
+    private double Fy(double m) => (2 + (m / _dims.WidthM) * 96) * _pitchHeight / 100.0;
+
+    private string BuildPitchMarkings()
+    {
+        var d = _dims;
+        var sb = new System.Text.StringBuilder();
+        var ic = System.Globalization.CultureInfo.InvariantCulture;
+        string F(double v) => v.ToString("F2", ic);
+
+        double yT   = Fy(0);
+        double yB   = Fy(d.WidthM);
+        double yMid = Fy(d.WidthM / 2);
+
+        const string thick = "stroke=\"rgba(255,255,255,0.6)\" stroke-width=\"0.5\" fill=\"none\"";
+        const string thin  = "stroke=\"rgba(255,255,255,0.4)\" stroke-width=\"0.3\" fill=\"none\"";
+        const string faint = "stroke=\"rgba(255,255,255,0.35)\" stroke-width=\"0.3\" fill=\"none\"";
+
+        // Outer boundary
+        sb.Append($"<rect x=\"2\" y=\"{F(yT)}\" width=\"96\" height=\"{F(yB - yT)}\" {thick}/>");
+
+        if (!_isHalfField)
+        {
+            // Halfway line
+            sb.Append($"<line x1=\"50\" y1=\"{F(yT)}\" x2=\"50\" y2=\"{F(yB)}\" {thin}/>");
+
+            // Centre circle
+            double rC = (d.CircleRadiusM / d.LengthM) * 96;
+            sb.Append($"<circle cx=\"50\" cy=\"{F(yMid)}\" r=\"{F(rC)}\" {thin}/>");
+
+            // Centre spot
+            sb.Append($"<circle cx=\"50\" cy=\"{F(yMid)}\" r=\"0.4\" fill=\"rgba(255,255,255,0.5)\" stroke=\"none\"/>");
+        }
+
+        void AddEnd(bool left)
+        {
+            double xPen  = left ? Fx(d.PenAreaDepthM)              : Fx(d.LengthM - d.PenAreaDepthM);
+            double xSix  = left ? Fx(d.SixYardDepthM)              : Fx(d.LengthM - d.SixYardDepthM);
+            double xSpot = left ? Fx(d.PenSpotM)                   : Fx(d.LengthM - d.PenSpotM);
+            double xGoal = left ? 2.0                               : 98.0;
+            double xGolOuter = left ? xGoal - 2.5                  : xGoal + 2.5;
+
+            double yPenT = Fy(d.WidthM / 2 - d.PenAreaHalfWidthM);
+            double yPenB = Fy(d.WidthM / 2 + d.PenAreaHalfWidthM);
+            double ySixT = Fy(d.WidthM / 2 - d.SixYardHalfWidthM);
+            double ySixB = Fy(d.WidthM / 2 + d.SixYardHalfWidthM);
+            double yGolT = Fy(d.WidthM / 2 - d.GoalHalfWidthM);
+            double yGolB = Fy(d.WidthM / 2 + d.GoalHalfWidthM);
+
+            // Penalty area
+            double penX = Math.Min(xGoal, xPen);
+            double penW = Math.Abs(xPen - xGoal);
+            sb.Append($"<rect x=\"{F(penX)}\" y=\"{F(yPenT)}\" width=\"{F(penW)}\" height=\"{F(yPenB - yPenT)}\" {thick}/>");
+
+            // Six-yard box
+            double sixX = Math.Min(xGoal, xSix);
+            double sixW = Math.Abs(xSix - xGoal);
+            sb.Append($"<rect x=\"{F(sixX)}\" y=\"{F(ySixT)}\" width=\"{F(sixW)}\" height=\"{F(ySixB - ySixT)}\" {thick}/>");
+
+            // Penalty spot
+            sb.Append($"<circle cx=\"{F(xSpot)}\" cy=\"{F(yMid)}\" r=\"0.4\" fill=\"rgba(255,255,255,0.5)\" stroke=\"none\"/>");
+
+            // Penalty arc (the arc of the 9.15 m circle that lies outside the penalty area)
+            double arcR  = (d.CircleRadiusM / d.LengthM) * 96;
+            double arcDx = Math.Abs(xPen - xSpot);
+            if (arcR > arcDx)
+            {
+                double arcDy  = Math.Sqrt(arcR * arcR - arcDx * arcDx);
+                int    sweep  = left ? 1 : 0;
+                sb.Append($"<path d=\"M {F(xPen)} {F(yMid - arcDy)} A {F(arcR)} {F(arcR)} 0 0 {sweep} {F(xPen)} {F(yMid + arcDy)}\" {faint}/>");
+            }
+
+            // Goal (extends 2.5 units outside the pitch boundary)
+            double gx = left ? xGolOuter : xGoal;
+            double gw = 2.5;
+            sb.Append($"<rect x=\"{F(gx)}\" y=\"{F(yGolT)}\" width=\"{F(gw)}\" height=\"{F(yGolB - yGolT)}\" stroke=\"rgba(255,255,255,0.85)\" stroke-width=\"0.6\" fill=\"none\"/>");
+
+            // Corner arcs
+            double rCor = Math.Max((1.0 / d.LengthM) * 96, 0.4);
+            if (left)
+            {
+                sb.Append($"<path d=\"M {F(2 + rCor)} {F(yT)} A {F(rCor)} {F(rCor)} 0 0 0 2 {F(yT + rCor)}\" {faint}/>");
+                sb.Append($"<path d=\"M 2 {F(yB - rCor)} A {F(rCor)} {F(rCor)} 0 0 1 {F(2 + rCor)} {F(yB)}\" {faint}/>");
+            }
+            else
+            {
+                sb.Append($"<path d=\"M {F(98 - rCor)} {F(yT)} A {F(rCor)} {F(rCor)} 0 0 1 98 {F(yT + rCor)}\" {faint}/>");
+                sb.Append($"<path d=\"M 98 {F(yB - rCor)} A {F(rCor)} {F(rCor)} 0 0 0 {F(98 - rCor)} {F(yB)}\" {faint}/>");
+            }
+        }
+
+        AddEnd(left: true);
+        if (!_isHalfField)
+            AddEnd(left: false);
+        else
+        {
+            // Half-field: indicate the halfway line at x = 98 with a dashed stroke
+            sb.Append($"<line x1=\"98\" y1=\"{F(yT)}\" x2=\"98\" y2=\"{F(yB)}\" stroke=\"rgba(255,255,255,0.3)\" stroke-width=\"0.3\" stroke-dasharray=\"2,2\" fill=\"none\"/>");
+            // Show the arc of the centre circle that extends past the halfway line
+            double rC   = (d.CircleRadiusM / d.LengthM) * 96;
+            double dxHW = 98 - Fx(d.LengthM);   // = 0 — halfway IS x=98 for half field
+            // The centre of the full-pitch centre circle is at x=98 for half field; just draw a small half-arc
+            sb.Append($"<path d=\"M 98 {F(yMid - rC)} A {F(rC)} {F(rC)} 0 0 0 98 {F(yMid + rC)}\" {faint}/>");
+        }
+
+        return sb.ToString();
+    }
 
     private bool IsPlacementTool => State.ActiveTool is
         "player" or "coach" or "cone" or "goal" or
@@ -283,7 +411,7 @@
                 var dx = x2 - x1;
                 var dy = y2 - y1;
                 var len = Math.Sqrt(dx * dx + dy * dy);
-                var amp = (i % 2 == 0 ? 1.0 : -1.0) * 3.0;
+                var amp = (i % 2 == 0 ? 1.0 : -1.0) * 1.5;
                 var cpx = (mx1 + mx2) / 2 + (len > 0 ? -dy / len * amp : 0);
                 var cpy = (my1 + my2) / 2 + (len > 0 ? dx / len * amp : 0);
                 sb.Append($" Q {cpx.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {cpy.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {mx2.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {my2.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}");

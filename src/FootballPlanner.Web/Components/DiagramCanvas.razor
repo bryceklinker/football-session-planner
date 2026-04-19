@@ -31,6 +31,9 @@
               width="@goal.Width" height="@(goal.Width / 7.0)"
               fill="none" stroke="white" stroke-width="0.8"
               style="cursor:pointer;"
+              @onmousedown="() => HandleElementMouseDown(gref)"
+              @onmousedown:stopPropagation="true"
+              @onmousedown:preventDefault="true"
               @onclick:stopPropagation="true"
               @onclick="() => HandleElementClick(gref)"/>
     }
@@ -44,6 +47,9 @@
                  points="@cone.X,@(cone.Y * _pitchHeight / 100 - 2) @(cone.X - 1.5),@(cone.Y * _pitchHeight / 100 + 1) @(cone.X + 1.5),@(cone.Y * _pitchHeight / 100 + 1)"
                  fill="#f0a500"
                  style="cursor:pointer;"
+                 @onmousedown="() => HandleElementMouseDown(cref)"
+                 @onmousedown:stopPropagation="true"
+                 @onmousedown:preventDefault="true"
                  @onclick:stopPropagation="true"
                  @onclick="() => HandleElementClick(cref)"/>
     }
@@ -57,6 +63,9 @@
                 cx="@coach.X" cy="@(coach.Y * _pitchHeight / 100)"
                 r="2" fill="#f0a500" stroke="white" stroke-width="0.4"
                 style="cursor:pointer;"
+                @onmousedown="() => HandleElementMouseDown(kref)"
+                @onmousedown:stopPropagation="true"
+                @onmousedown:preventDefault="true"
                 @onclick:stopPropagation="true"
                 @onclick="() => HandleElementClick(kref)"/>
         @((MarkupString)$"<text x=\"{coach.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" y=\"{(coach.Y * _pitchHeight / 100).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"white\" font-size=\"1.8\" font-weight=\"bold\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(coach.Label)}</text>")
@@ -74,6 +83,9 @@
                     cx="@player.X" cy="@(player.Y * _pitchHeight / 100)"
                     r="2" fill="@team.Color" stroke="white" stroke-width="0.4"
                     style="cursor:pointer;"
+                    @onmousedown="() => HandleElementMouseDown(pref)"
+                    @onmousedown:stopPropagation="true"
+                    @onmousedown:preventDefault="true"
                     @onclick:stopPropagation="true"
                     @onclick="() => HandleElementClick(pref)"/>
             @if (!string.IsNullOrEmpty(player.Label))
@@ -102,6 +114,9 @@
               fill="none"
               marker-end="url(#@markerId)"
               style="cursor:pointer;"
+              @onmousedown="() => HandleElementMouseDown(aref)"
+              @onmousedown:stopPropagation="true"
+              @onmousedown:preventDefault="true"
               @onclick:stopPropagation="true"
               @onclick="() => HandleElementClick(aref)"/>
     }
@@ -338,26 +353,19 @@
         _ => "default"
     };
 
-    // Mousedown on the SVG: identify which element (if any) is under the cursor via JS,
-    // then start drag. Using the SVG-level event is more reliable than attaching
-    // @onmousedown to individual SVG child elements in Blazor WASM.
-    private async Task HandleSvgMouseDown(MouseEventArgs e)
+    // Mousedown on an individual element starts drag directly — no JS hit-testing needed.
+    private async Task HandleElementMouseDown(string elementRef)
     {
         if (State.ActiveTool != "move") return;
-        string? elementRef = null;
-        try
-        {
-            elementRef = await JS.InvokeAsync<string?>(
-                "diagramInterop.getElementRefAt", _svgId, e.ClientX, e.ClientY);
-        }
-        catch (Exception) { }
-        if (string.IsNullOrEmpty(elementRef)) return;
         _draggingRef = elementRef;
         State.BeginDrag();
         _dotNetRef ??= DotNetObjectReference.Create(this);
         try { await JS.InvokeVoidAsync("diagramInterop.startDrag", _dotNetRef, _svgId); }
         catch (Exception) { }
     }
+
+    // SVG background mousedown — no element hit, nothing to do for drag.
+    private void HandleSvgMouseDown(MouseEventArgs e) { }
 
     // Mouseup inside the SVG ends drag immediately.
     private void HandleSvgMouseUp(MouseEventArgs e) => _draggingRef = null;

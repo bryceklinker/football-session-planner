@@ -116,17 +116,14 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
         state.SetTool("move");
         state.PlaceCone(10.0, 20.0);
 
-        // Use strict mode so getElementRefAt and startDrag are properly mocked.
-        // JS window mousemove calls OnDragMove directly — no SVG mousemove needed.
         JSInterop.Mode = JSRuntimeMode.Strict;
-        JSInterop.Setup<string?>("diagramInterop.getElementRefAt", _ => true).SetResult("cones/0");
         JSInterop.SetupVoid("diagramInterop.startDrag", _ => true);
         JSInterop.SetupVoid("diagramInterop.cleanup", _ => true);
 
         var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
 
-        // SVG mousedown identifies the cone and starts drag
-        cut.Find("svg").MouseDown(new MouseEventArgs { ClientX = 10, ClientY = 20 });
+        // Mousedown directly on the cone element starts drag
+        cut.Find("polygon[data-element^='cones']").MouseDown();
         // Simulate JS window mousemove calling back into Blazor
         cut.Instance.OnDragMove(50.0, 60.0);
 
@@ -143,8 +140,8 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
 
         var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
 
-        // HandleSvgMouseDown returns early because ActiveTool != "move" — startDrag never called
-        cut.Find("svg").MouseDown(new MouseEventArgs());
+        // HandleElementMouseDown returns early because ActiveTool != "move"
+        cut.Find("polygon[data-element^='cones']").MouseDown();
         // OnDragMove: _draggingRef is null — no PreviewMove called
         cut.Instance.OnDragMove(50.0, 60.0);
 
@@ -160,13 +157,12 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
         state.PlaceCone(10.0, 20.0);
 
         JSInterop.Mode = JSRuntimeMode.Strict;
-        JSInterop.Setup<string?>("diagramInterop.getElementRefAt", _ => true).SetResult("cones/0");
         JSInterop.SetupVoid("diagramInterop.startDrag", _ => true);
         JSInterop.SetupVoid("diagramInterop.cleanup", _ => true);
 
         var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
 
-        cut.Find("svg").MouseDown(new MouseEventArgs { ClientX = 10, ClientY = 20 });
+        cut.Find("polygon[data-element^='cones']").MouseDown();
         cut.Instance.OnDragMove(50.0, 60.0);
         // JS window mouseup fires OnDragEnd, clearing _draggingRef
         cut.Instance.OnDragEnd();

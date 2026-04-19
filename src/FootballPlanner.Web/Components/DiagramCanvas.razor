@@ -24,7 +24,7 @@
         var goal = State.Diagram.Goals[gi];
         var gref = $"goals/{gi}";
         <rect data-element="@gref"
-              x="@goal.X" y="@goal.Y"
+              x="@goal.X" y="@(goal.Y * _pitchHeight / 100)"
               width="@goal.Width" height="@(goal.Width / 7.0)"
               fill="none" stroke="white" stroke-width="0.8"
               style="cursor:pointer;"
@@ -135,12 +135,9 @@
 
     private double _pitchHeight => State.Diagram.PitchFormat switch
     {
-        PitchFormat.ElevenVElevenFull  => 64.76,   // 68m / 105m × 100
-        PitchFormat.ElevenVElevenHalf  => 129.52,  // 68m / 52.5m × 100
-        PitchFormat.NineVNineFull      => 62.5,    // 50m / 80m × 100
-        PitchFormat.NineVNineHalf      => 125.0,   // 50m / 40m × 100
-        PitchFormat.SevenVSevenFull    => 66.67,   // 40m / 60m × 100
-        PitchFormat.SevenVSevenHalf    => 133.33,  // 40m / 30m × 100
+        PitchFormat.ElevenVElevenFull or PitchFormat.ElevenVElevenHalf => 64.76,
+        PitchFormat.NineVNineFull or PitchFormat.NineVNineHalf         => 62.5,
+        PitchFormat.SevenVSevenFull or PitchFormat.SevenVSevenHalf     => 66.67,
         PitchFormat.Custom when State.Diagram is { CustomHeight: { } h, CustomWidth: { } w }
             => h / w * 100.0,
         _ => 64.76
@@ -157,12 +154,9 @@
 
     private PitchDimensions _dims => State.Diagram.PitchFormat switch
     {
-        PitchFormat.ElevenVElevenFull => new(105, 68, 16.5, 20.16, 5.5, 9.16, 11, 9.15, 3.66),
-        PitchFormat.ElevenVElevenHalf => new(52.5, 68, 16.5, 20.16, 5.5, 9.16, 11, 9.15, 3.66),
-        PitchFormat.NineVNineFull     => new(80, 50, 12, 14, 4, 6, 9, 9.15, 2.5),
-        PitchFormat.NineVNineHalf     => new(40, 50, 12, 14, 4, 6, 9, 9.15, 2.5),
-        PitchFormat.SevenVSevenFull   => new(60, 40, 10, 10, 3.5, 4, 7, 7.0, 2.0),
-        PitchFormat.SevenVSevenHalf   => new(30, 40, 10, 10, 3.5, 4, 7, 7.0, 2.0),
+        PitchFormat.ElevenVElevenFull or PitchFormat.ElevenVElevenHalf => new(105, 68, 16.5, 20.16, 5.5, 9.16, 11, 9.15, 3.66),
+        PitchFormat.NineVNineFull or PitchFormat.NineVNineHalf         => new(80, 50, 12, 14, 4, 6, 9, 9.15, 2.5),
+        PitchFormat.SevenVSevenFull or PitchFormat.SevenVSevenHalf     => new(60, 40, 10, 10, 3.5, 4, 7, 7.0, 2.0),
         _ => new(105, 68, 16.5, 20.16, 5.5, 9.16, 11, 9.15, 3.66)
     };
 
@@ -190,11 +184,16 @@
         const string thin  = "stroke=\"rgba(255,255,255,0.4)\" stroke-width=\"0.3\" fill=\"none\"";
         const string faint = "stroke=\"rgba(255,255,255,0.35)\" stroke-width=\"0.3\" fill=\"none\"";
 
-        // Outer boundary
-        sb.Append($"<rect x=\"2\" y=\"{F(yT)}\" width=\"96\" height=\"{F(yB - yT)}\" {thick}/>");
-
-        if (!_isHalfField)
+        if (_isHalfField)
         {
+            // Half-field boundary: goal line (x=2) to centre line (x=50), full width
+            sb.Append($"<rect x=\"2\" y=\"{F(yT)}\" width=\"48\" height=\"{F(yB - yT)}\" {thick}/>");
+        }
+        else
+        {
+            // Full-field boundary
+            sb.Append($"<rect x=\"2\" y=\"{F(yT)}\" width=\"96\" height=\"{F(yB - yT)}\" {thick}/>");
+
             // Halfway line
             sb.Append($"<line x1=\"50\" y1=\"{F(yT)}\" x2=\"50\" y2=\"{F(yB)}\" {thin}/>");
 
@@ -266,16 +265,6 @@
         AddEnd(left: true);
         if (!_isHalfField)
             AddEnd(left: false);
-        else
-        {
-            // Half-field: indicate the halfway line at x = 98 with a dashed stroke
-            sb.Append($"<line x1=\"98\" y1=\"{F(yT)}\" x2=\"98\" y2=\"{F(yB)}\" stroke=\"rgba(255,255,255,0.3)\" stroke-width=\"0.3\" stroke-dasharray=\"2,2\" fill=\"none\"/>");
-            // Show the arc of the centre circle that extends past the halfway line
-            double rC   = (d.CircleRadiusM / d.LengthM) * 96;
-            double dxHW = 98 - Fx(d.LengthM);   // = 0 — halfway IS x=98 for half field
-            // The centre of the full-pitch centre circle is at x=98 for half field; just draw a small half-arc
-            sb.Append($"<path d=\"M 98 {F(yMid - rC)} A {F(rC)} {F(rC)} 0 0 0 98 {F(yMid + rC)}\" {faint}/>");
-        }
 
         return sb.ToString();
     }

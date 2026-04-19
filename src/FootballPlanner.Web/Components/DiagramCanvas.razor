@@ -8,6 +8,7 @@
      style="width:100%;display:block;background:#2d5a27;cursor:@_cursor;overflow:visible;"
      @onclick="HandleSvgClick"
      @onmousedown="HandleSvgMouseDown"
+     @onmousedown:preventDefault="true"
      @onmouseup="HandleSvgMouseUp"
      @onmousemove="HandleMouseMove">
 
@@ -136,10 +137,10 @@
         PitchFormat.ElevenVElevenFull => 64.76,   // 68/105 × 100
         PitchFormat.NineVNineFull     => 62.5,    // 50/80  × 100
         PitchFormat.SevenVSevenFull   => 66.67,   // 40/60  × 100
-        // Half field (rotated, goal at bottom): height = HalfLengthM / WidthM × 100
-        PitchFormat.ElevenVElevenHalf => 77.21,   // 52.5/68 × 100
-        PitchFormat.NineVNineHalf     => 80.0,    // 40/50   × 100
-        PitchFormat.SevenVSevenHalf   => 75.0,    // 30/40   × 100
+        // Half field (rotated, goal at bottom): same canvas size as full field
+        PitchFormat.ElevenVElevenHalf => 64.76,
+        PitchFormat.NineVNineHalf     => 62.5,
+        PitchFormat.SevenVSevenHalf   => 66.67,
         PitchFormat.Custom when State.Diagram is { CustomHeight: { } h, CustomWidth: { } w }
             => h / w * 100.0,
         _ => 64.76
@@ -349,19 +350,28 @@
             elementRef = await JS.InvokeAsync<string?>(
                 "diagramInterop.getElementRefAt", _svgId, e.ClientX, e.ClientY);
         }
-        catch (JSException) { }
+        catch (Exception) { }
         if (string.IsNullOrEmpty(elementRef)) return;
         _draggingRef = elementRef;
         State.BeginDrag();
         _dotNetRef ??= DotNetObjectReference.Create(this);
         try { await JS.InvokeVoidAsync("diagramInterop.startDrag", _dotNetRef, _svgId); }
-        catch (JSException) { }
+        catch (Exception) { }
     }
 
     // Mouseup inside the SVG ends drag immediately.
     private void HandleSvgMouseUp(MouseEventArgs e) => _draggingRef = null;
 
-    // Called by JS when mouseup fires outside the SVG (window mouseup listener).
+    // Called by JS window mousemove during drag — updates element position in real time.
+    [JSInvokable]
+    public void OnDragMove(double x, double y)
+    {
+        if (_draggingRef == null) return;
+        State.PreviewMove(_draggingRef, x, y);
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    // Called by JS when mouseup fires (window mouseup listener, fires anywhere on page).
     [JSInvokable]
     public void OnDragEnd()
     {
@@ -403,9 +413,11 @@
     private Task HandleElementClick(string elementRef)
         => OnElementClick.InvokeAsync(elementRef);
 
+    // SVG mousemove only updates the ghost cursor for placement tools.
+    // Drag preview is handled by JS window mousemove → OnDragMove.
     private async Task HandleMouseMove(MouseEventArgs e)
     {
-        if (!IsPlacementTool && _draggingRef == null) return;
+        if (!IsPlacementTool) return;
 
         double x = e.OffsetX;
         double y = e.OffsetY;
@@ -415,16 +427,10 @@
                 "diagramInterop.getSvgCoordinates", _svgId, e.ClientX, e.ClientY);
             if (coords is not null) { x = coords.X; y = coords.Y; }
         }
-        catch (Exception) { /* JS unavailable or not set up — fall back to offset coordinates */ }
+        catch (Exception) { /* JS unavailable — fall back to offset coordinates */ }
 
-        if (IsPlacementTool)
-        {
-            _ghostX = x;
-            _ghostY = y * _pitchHeight / 100.0;
-        }
-
-        if (_draggingRef != null)
-            State.PreviewMove(_draggingRef, x, y);
+        _ghostX = x;
+        _ghostY = y * _pitchHeight / 100.0;
     }
 
     private string BuildArrowPath(ArrowElement arrow)

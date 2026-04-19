@@ -113,8 +113,7 @@ public class DiagramCanvasTests : TestContext
         state.PlaceCone(10.0, 20.0);
 
         // Use strict mode so getElementRefAt and startDrag are properly mocked.
-        // getSvgCoordinates is intentionally not set up — HandleMouseMove falls
-        // back to OffsetX/OffsetY when JS throws.
+        // JS window mousemove calls OnDragMove directly — no SVG mousemove needed.
         JSInterop.Mode = JSRuntimeMode.Strict;
         JSInterop.Setup<string?>("diagramInterop.getElementRefAt", _ => true).SetResult("cones/0");
         JSInterop.SetupVoid("diagramInterop.startDrag", _ => true);
@@ -124,8 +123,8 @@ public class DiagramCanvasTests : TestContext
 
         // SVG mousedown identifies the cone and starts drag
         cut.Find("svg").MouseDown(new MouseEventArgs { ClientX = 10, ClientY = 20 });
-        // SVG mousemove: JS getSvgCoordinates not set up → falls back to OffsetX/OffsetY
-        cut.Find("svg").MouseMove(new MouseEventArgs { OffsetX = 50.0, OffsetY = 60.0 });
+        // Simulate JS window mousemove calling back into Blazor
+        cut.Instance.OnDragMove(50.0, 60.0);
 
         Assert.Equal(50.0, state.Diagram.Cones[0].X);
         Assert.Equal(60.0, state.Diagram.Cones[0].Y);
@@ -140,10 +139,10 @@ public class DiagramCanvasTests : TestContext
 
         var cut = RenderComponent<DiagramCanvas>(p => p.Add(x => x.State, state));
 
-        // HandleSvgMouseDown returns early because ActiveTool != "move"
+        // HandleSvgMouseDown returns early because ActiveTool != "move" — startDrag never called
         cut.Find("svg").MouseDown(new MouseEventArgs());
-        // Mousemove: _draggingRef is null — no PreviewMove called
-        cut.Find("svg").MouseMove(new MouseEventArgs { OffsetX = 50.0, OffsetY = 60.0 });
+        // OnDragMove: _draggingRef is null — no PreviewMove called
+        cut.Instance.OnDragMove(50.0, 60.0);
 
         Assert.Equal(10.0, state.Diagram.Cones[0].X);
         Assert.Equal(20.0, state.Diagram.Cones[0].Y);
@@ -164,12 +163,12 @@ public class DiagramCanvasTests : TestContext
         var cut = RenderComponent<DiagramCanvas>(p => p.Add(x => x.State, state));
 
         cut.Find("svg").MouseDown(new MouseEventArgs { ClientX = 10, ClientY = 20 });
-        cut.Find("svg").MouseMove(new MouseEventArgs { OffsetX = 50.0, OffsetY = 60.0 });
-        // Mouseup clears _draggingRef
-        cut.Find("svg").MouseUp(new MouseEventArgs());
+        cut.Instance.OnDragMove(50.0, 60.0);
+        // JS window mouseup fires OnDragEnd, clearing _draggingRef
+        cut.Instance.OnDragEnd();
 
-        // Further mousemove should not update position
-        cut.Find("svg").MouseMove(new MouseEventArgs { OffsetX = 90.0, OffsetY = 90.0 });
+        // Further OnDragMove should not update position
+        cut.Instance.OnDragMove(90.0, 90.0);
 
         Assert.Equal(50.0, state.Diagram.Cones[0].X);
         Assert.Equal(60.0, state.Diagram.Cones[0].Y);

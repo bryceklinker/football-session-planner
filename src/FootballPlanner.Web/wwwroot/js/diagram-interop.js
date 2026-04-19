@@ -2,11 +2,19 @@
 // Handles mouse tracking during drag on the SVG pitch.
 // All other diagram logic lives in C#.
 
-let _listeners = new Map(); // svgId -> { up }
+let _listeners = new Map(); // svgId -> { move, up }
 
 export function getSvgCoordinates(svgId, clientX, clientY) {
     const svg = document.getElementById(svgId);
     if (!svg) return { x: 0, y: 0 };
+    const rect = svg.getBoundingClientRect();
+    const x = ((clientX - rect.left) / rect.width) * 100;
+    const y = ((clientY - rect.top) / rect.height) * 100;
+    return { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) };
+}
+
+function _svgCoords(svg, clientX, clientY) {
+    if (!svg) return { x: clientX, y: clientY };
     const rect = svg.getBoundingClientRect();
     const x = ((clientX - rect.left) / rect.width) * 100;
     const y = ((clientY - rect.top) / rect.height) * 100;
@@ -27,22 +35,28 @@ export function getElementRefAt(svgId, clientX, clientY) {
     return null;
 }
 
-// Registers a window mouseup listener so drag ends even when the mouse is
-// released outside the SVG. Blazor's @onmousemove on the SVG handles the
-// visual preview during drag — no mousemove listener is needed here.
+// Registers window mousemove and mouseup listeners so drag tracks the cursor
+// anywhere on the page, not just over the SVG.
 export function startDrag(dotNetRef, svgId) {
     cleanup(svgId);
+    const svg = document.getElementById(svgId);
+    const onMove = (ev) => {
+        const c = _svgCoords(svg, ev.clientX, ev.clientY);
+        dotNetRef.invokeMethodAsync('OnDragMove', c.x, c.y);
+    };
     const onUp = () => {
         dotNetRef.invokeMethodAsync('OnDragEnd');
         cleanup(svgId);
     };
+    window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onUp);
-    _listeners.set(svgId, { up: onUp });
+    _listeners.set(svgId, { move: onMove, up: onUp });
 }
 
 export function cleanup(svgId) {
     const entry = _listeners.get(svgId);
     if (!entry) return;
+    window.removeEventListener('mousemove', entry.move);
     window.removeEventListener('mouseup', entry.up);
     _listeners.delete(svgId);
 }

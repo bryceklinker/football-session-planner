@@ -7,6 +7,8 @@
      viewBox="0 0 100 @_pitchHeight.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
      style="width:100%;display:block;background:#2d5a27;cursor:@_cursor;overflow:visible;"
      @onclick="HandleSvgClick"
+     @onmousedown="HandleSvgMouseDown"
+     @onmouseup="HandleSvgMouseUp"
      @onmousemove="HandleMouseMove">
 
     <defs>
@@ -28,7 +30,6 @@
               width="@goal.Width" height="@(goal.Width / 7.0)"
               fill="none" stroke="white" stroke-width="0.8"
               style="cursor:pointer;"
-              @onmousedown="e => HandleElementMouseDown(gref, e)"
               @onclick:stopPropagation="true"
               @onclick="() => HandleElementClick(gref)"/>
     }
@@ -42,7 +43,6 @@
                  points="@cone.X,@(cone.Y * _pitchHeight / 100 - 2) @(cone.X - 1.5),@(cone.Y * _pitchHeight / 100 + 1) @(cone.X + 1.5),@(cone.Y * _pitchHeight / 100 + 1)"
                  fill="#f0a500"
                  style="cursor:pointer;"
-                 @onmousedown="e => HandleElementMouseDown(cref, e)"
                  @onclick:stopPropagation="true"
                  @onclick="() => HandleElementClick(cref)"/>
     }
@@ -56,7 +56,6 @@
                 cx="@coach.X" cy="@(coach.Y * _pitchHeight / 100)"
                 r="2" fill="#f0a500" stroke="white" stroke-width="0.4"
                 style="cursor:pointer;"
-                @onmousedown="e => HandleElementMouseDown(kref, e)"
                 @onclick:stopPropagation="true"
                 @onclick="() => HandleElementClick(kref)"/>
         @((MarkupString)$"<text x=\"{coach.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" y=\"{(coach.Y * _pitchHeight / 100).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"white\" font-size=\"1.8\" font-weight=\"bold\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(coach.Label)}</text>")
@@ -74,7 +73,6 @@
                     cx="@player.X" cy="@(player.Y * _pitchHeight / 100)"
                     r="2" fill="@team.Color" stroke="white" stroke-width="0.4"
                     style="cursor:pointer;"
-                    @onmousedown="e => HandleElementMouseDown(pref, e)"
                     @onclick:stopPropagation="true"
                     @onclick="() => HandleElementClick(pref)"/>
             @if (!string.IsNullOrEmpty(player.Label))
@@ -103,7 +101,6 @@
               fill="none"
               marker-end="url(#@markerId)"
               style="cursor:pointer;"
-              @onmousedown="e => HandleElementMouseDown(aref, e)"
               @onclick:stopPropagation="true"
               @onclick="() => HandleElementClick(aref)"/>
     }
@@ -135,9 +132,14 @@
 
     private double _pitchHeight => State.Diagram.PitchFormat switch
     {
-        PitchFormat.ElevenVElevenFull or PitchFormat.ElevenVElevenHalf => 64.76,
-        PitchFormat.NineVNineFull or PitchFormat.NineVNineHalf         => 62.5,
-        PitchFormat.SevenVSevenFull or PitchFormat.SevenVSevenHalf     => 66.67,
+        // Full field: height = WidthM / LengthM × 100
+        PitchFormat.ElevenVElevenFull => 64.76,   // 68/105 × 100
+        PitchFormat.NineVNineFull     => 62.5,    // 50/80  × 100
+        PitchFormat.SevenVSevenFull   => 66.67,   // 40/60  × 100
+        // Half field (rotated, goal at bottom): height = HalfLengthM / WidthM × 100
+        PitchFormat.ElevenVElevenHalf => 77.21,   // 52.5/68 × 100
+        PitchFormat.NineVNineHalf     => 80.0,    // 40/50   × 100
+        PitchFormat.SevenVSevenHalf   => 75.0,    // 30/40   × 100
         PitchFormat.Custom when State.Diagram is { CustomHeight: { } h, CustomWidth: { } w }
             => h / w * 100.0,
         _ => 64.76
@@ -186,8 +188,63 @@
 
         if (_isHalfField)
         {
-            // Half-field boundary: goal line (x=2) to centre line (x=50), full width
-            sb.Append($"<rect x=\"2\" y=\"{F(yT)}\" width=\"48\" height=\"{F(yB - yT)}\" {thick}/>");
+            // Half-field: rotated 90° — field width (W) is horizontal, half-length (HL) is
+            // vertical. Goal is at the bottom; centre line is at the top.
+            double pH = _pitchHeight;
+            double W  = d.WidthM;
+            double HL = d.LengthM / 2.0;
+            double xs = 96.0 / W;                  // SVG x units per metre across field
+            double ys = (pH - 4.0) / HL;            // SVG y units per metre of depth
+
+            // FxH: metres from left touchline → SVG x
+            double FxH(double m) => 2.0 + m * xs;
+            // FyH: metres from goal line → SVG y  (0 = goal line = bottom, HL = centre = top)
+            double FyH(double depth) => (pH - 2.0) - depth * ys;
+
+            // Outer boundary
+            sb.Append($"<rect x=\"2\" y=\"2\" width=\"96\" height=\"{F(pH - 4.0)}\" {thick}/>");
+
+            // Penalty area
+            double penL   = FxH(W / 2.0 - d.PenAreaHalfWidthM);
+            double penR   = FxH(W / 2.0 + d.PenAreaHalfWidthM);
+            double penTop = FyH(d.PenAreaDepthM);
+            double penBot = FyH(0.0);   // goal line = bottom edge
+            sb.Append($"<rect x=\"{F(penL)}\" y=\"{F(penTop)}\" width=\"{F(penR - penL)}\" height=\"{F(penBot - penTop)}\" {thick}/>");
+
+            // Six-yard box
+            double sixL   = FxH(W / 2.0 - d.SixYardHalfWidthM);
+            double sixR   = FxH(W / 2.0 + d.SixYardHalfWidthM);
+            double sixTop = FyH(d.SixYardDepthM);
+            sb.Append($"<rect x=\"{F(sixL)}\" y=\"{F(sixTop)}\" width=\"{F(sixR - sixL)}\" height=\"{F(penBot - sixTop)}\" {thick}/>");
+
+            // Penalty spot
+            double spotX = 50.0;   // FxH(W/2) = 2 + 48 = 50
+            double spotY = FyH(d.PenSpotM);
+            sb.Append($"<circle cx=\"{F(spotX)}\" cy=\"{F(spotY)}\" r=\"0.4\" fill=\"rgba(255,255,255,0.5)\" stroke=\"none\"/>");
+
+            // Penalty arc (elliptical — x and y scales differ in this orientation)
+            double arcRx = d.CircleRadiusM * xs;
+            double arcRy = d.CircleRadiusM * ys;
+            double ellDy = penTop - spotY;   // negative: penTop is above spotY
+            double ellDyRy = ellDy / arcRy;
+            if (ellDyRy * ellDyRy < 1.0)
+            {
+                double arcDx = arcRx * Math.Sqrt(1.0 - ellDyRy * ellDyRy);
+                // Arc from left intersection to right intersection, bulging upward (toward centre)
+                sb.Append($"<path d=\"M {F(spotX - arcDx)} {F(penTop)} A {F(arcRx)} {F(arcRy)} 0 0 0 {F(spotX + arcDx)} {F(penTop)}\" {faint}/>");
+            }
+
+            // Goal (extends below goal line — visible via overflow:visible)
+            double goalL = FxH(W / 2.0 - d.GoalHalfWidthM);
+            double goalR = FxH(W / 2.0 + d.GoalHalfWidthM);
+            sb.Append($"<rect x=\"{F(goalL)}\" y=\"{F(penBot)}\" width=\"{F(goalR - goalL)}\" height=\"2.5\" stroke=\"rgba(255,255,255,0.85)\" stroke-width=\"0.6\" fill=\"none\"/>");
+
+            // Corner arcs at bottom corners (goal line × touchlines)
+            double rCor = Math.Max(xs, 0.5);
+            // Bottom-left: (2, pH-2)
+            sb.Append($"<path d=\"M 2 {F(penBot - rCor)} A {F(rCor)} {F(rCor)} 0 0 1 {F(2 + rCor)} {F(penBot)}\" {faint}/>");
+            // Bottom-right: (98, pH-2)
+            sb.Append($"<path d=\"M 98 {F(penBot - rCor)} A {F(rCor)} {F(rCor)} 0 0 0 {F(98 - rCor)} {F(penBot)}\" {faint}/>");
         }
         else
         {
@@ -203,68 +260,67 @@
 
             // Centre spot
             sb.Append($"<circle cx=\"50\" cy=\"{F(yMid)}\" r=\"0.4\" fill=\"rgba(255,255,255,0.5)\" stroke=\"none\"/>");
-        }
 
-        void AddEnd(bool left)
-        {
-            double xPen  = left ? Fx(d.PenAreaDepthM)              : Fx(d.LengthM - d.PenAreaDepthM);
-            double xSix  = left ? Fx(d.SixYardDepthM)              : Fx(d.LengthM - d.SixYardDepthM);
-            double xSpot = left ? Fx(d.PenSpotM)                   : Fx(d.LengthM - d.PenSpotM);
-            double xGoal = left ? 2.0                               : 98.0;
-            double xGolOuter = left ? xGoal - 2.5                  : xGoal + 2.5;
-
-            double yPenT = Fy(d.WidthM / 2 - d.PenAreaHalfWidthM);
-            double yPenB = Fy(d.WidthM / 2 + d.PenAreaHalfWidthM);
-            double ySixT = Fy(d.WidthM / 2 - d.SixYardHalfWidthM);
-            double ySixB = Fy(d.WidthM / 2 + d.SixYardHalfWidthM);
-            double yGolT = Fy(d.WidthM / 2 - d.GoalHalfWidthM);
-            double yGolB = Fy(d.WidthM / 2 + d.GoalHalfWidthM);
-
-            // Penalty area
-            double penX = Math.Min(xGoal, xPen);
-            double penW = Math.Abs(xPen - xGoal);
-            sb.Append($"<rect x=\"{F(penX)}\" y=\"{F(yPenT)}\" width=\"{F(penW)}\" height=\"{F(yPenB - yPenT)}\" {thick}/>");
-
-            // Six-yard box
-            double sixX = Math.Min(xGoal, xSix);
-            double sixW = Math.Abs(xSix - xGoal);
-            sb.Append($"<rect x=\"{F(sixX)}\" y=\"{F(ySixT)}\" width=\"{F(sixW)}\" height=\"{F(ySixB - ySixT)}\" {thick}/>");
-
-            // Penalty spot
-            sb.Append($"<circle cx=\"{F(xSpot)}\" cy=\"{F(yMid)}\" r=\"0.4\" fill=\"rgba(255,255,255,0.5)\" stroke=\"none\"/>");
-
-            // Penalty arc (the arc of the 9.15 m circle that lies outside the penalty area)
-            double arcR  = (d.CircleRadiusM / d.LengthM) * 96;
-            double arcDx = Math.Abs(xPen - xSpot);
-            if (arcR > arcDx)
+            void AddEnd(bool left)
             {
-                double arcDy  = Math.Sqrt(arcR * arcR - arcDx * arcDx);
-                int    sweep  = left ? 1 : 0;
-                sb.Append($"<path d=\"M {F(xPen)} {F(yMid - arcDy)} A {F(arcR)} {F(arcR)} 0 0 {sweep} {F(xPen)} {F(yMid + arcDy)}\" {faint}/>");
+                double xPen  = left ? Fx(d.PenAreaDepthM)              : Fx(d.LengthM - d.PenAreaDepthM);
+                double xSix  = left ? Fx(d.SixYardDepthM)              : Fx(d.LengthM - d.SixYardDepthM);
+                double xSpot = left ? Fx(d.PenSpotM)                   : Fx(d.LengthM - d.PenSpotM);
+                double xGoal = left ? 2.0                               : 98.0;
+                double xGolOuter = left ? xGoal - 2.5                  : xGoal + 2.5;
+
+                double yPenT = Fy(d.WidthM / 2 - d.PenAreaHalfWidthM);
+                double yPenB = Fy(d.WidthM / 2 + d.PenAreaHalfWidthM);
+                double ySixT = Fy(d.WidthM / 2 - d.SixYardHalfWidthM);
+                double ySixB = Fy(d.WidthM / 2 + d.SixYardHalfWidthM);
+                double yGolT = Fy(d.WidthM / 2 - d.GoalHalfWidthM);
+                double yGolB = Fy(d.WidthM / 2 + d.GoalHalfWidthM);
+
+                // Penalty area
+                double penX = Math.Min(xGoal, xPen);
+                double penW = Math.Abs(xPen - xGoal);
+                sb.Append($"<rect x=\"{F(penX)}\" y=\"{F(yPenT)}\" width=\"{F(penW)}\" height=\"{F(yPenB - yPenT)}\" {thick}/>");
+
+                // Six-yard box
+                double sixX = Math.Min(xGoal, xSix);
+                double sixW = Math.Abs(xSix - xGoal);
+                sb.Append($"<rect x=\"{F(sixX)}\" y=\"{F(ySixT)}\" width=\"{F(sixW)}\" height=\"{F(ySixB - ySixT)}\" {thick}/>");
+
+                // Penalty spot
+                sb.Append($"<circle cx=\"{F(xSpot)}\" cy=\"{F(yMid)}\" r=\"0.4\" fill=\"rgba(255,255,255,0.5)\" stroke=\"none\"/>");
+
+                // Penalty arc (the arc of the 9.15 m circle that lies outside the penalty area)
+                double arcR  = (d.CircleRadiusM / d.LengthM) * 96;
+                double arcDx = Math.Abs(xPen - xSpot);
+                if (arcR > arcDx)
+                {
+                    double arcDy  = Math.Sqrt(arcR * arcR - arcDx * arcDx);
+                    int    sweep  = left ? 1 : 0;
+                    sb.Append($"<path d=\"M {F(xPen)} {F(yMid - arcDy)} A {F(arcR)} {F(arcR)} 0 0 {sweep} {F(xPen)} {F(yMid + arcDy)}\" {faint}/>");
+                }
+
+                // Goal (extends 2.5 units outside the pitch boundary)
+                double gx = left ? xGolOuter : xGoal;
+                double gw = 2.5;
+                sb.Append($"<rect x=\"{F(gx)}\" y=\"{F(yGolT)}\" width=\"{F(gw)}\" height=\"{F(yGolB - yGolT)}\" stroke=\"rgba(255,255,255,0.85)\" stroke-width=\"0.6\" fill=\"none\"/>");
+
+                // Corner arcs
+                double rCor = Math.Max((1.0 / d.LengthM) * 96, 0.4);
+                if (left)
+                {
+                    sb.Append($"<path d=\"M {F(2 + rCor)} {F(yT)} A {F(rCor)} {F(rCor)} 0 0 0 2 {F(yT + rCor)}\" {faint}/>");
+                    sb.Append($"<path d=\"M 2 {F(yB - rCor)} A {F(rCor)} {F(rCor)} 0 0 1 {F(2 + rCor)} {F(yB)}\" {faint}/>");
+                }
+                else
+                {
+                    sb.Append($"<path d=\"M {F(98 - rCor)} {F(yT)} A {F(rCor)} {F(rCor)} 0 0 1 98 {F(yT + rCor)}\" {faint}/>");
+                    sb.Append($"<path d=\"M 98 {F(yB - rCor)} A {F(rCor)} {F(rCor)} 0 0 0 {F(98 - rCor)} {F(yB)}\" {faint}/>");
+                }
             }
 
-            // Goal (extends 2.5 units outside the pitch boundary)
-            double gx = left ? xGolOuter : xGoal;
-            double gw = 2.5;
-            sb.Append($"<rect x=\"{F(gx)}\" y=\"{F(yGolT)}\" width=\"{F(gw)}\" height=\"{F(yGolB - yGolT)}\" stroke=\"rgba(255,255,255,0.85)\" stroke-width=\"0.6\" fill=\"none\"/>");
-
-            // Corner arcs
-            double rCor = Math.Max((1.0 / d.LengthM) * 96, 0.4);
-            if (left)
-            {
-                sb.Append($"<path d=\"M {F(2 + rCor)} {F(yT)} A {F(rCor)} {F(rCor)} 0 0 0 2 {F(yT + rCor)}\" {faint}/>");
-                sb.Append($"<path d=\"M 2 {F(yB - rCor)} A {F(rCor)} {F(rCor)} 0 0 1 {F(2 + rCor)} {F(yB)}\" {faint}/>");
-            }
-            else
-            {
-                sb.Append($"<path d=\"M {F(98 - rCor)} {F(yT)} A {F(rCor)} {F(rCor)} 0 0 1 98 {F(yT + rCor)}\" {faint}/>");
-                sb.Append($"<path d=\"M 98 {F(yB - rCor)} A {F(rCor)} {F(rCor)} 0 0 0 {F(98 - rCor)} {F(yB)}\" {faint}/>");
-            }
-        }
-
-        AddEnd(left: true);
-        if (!_isHalfField)
+            AddEnd(left: true);
             AddEnd(left: false);
+        }
 
         return sb.ToString();
     }
@@ -281,37 +337,35 @@
         _ => "default"
     };
 
-    private async Task HandleElementMouseDown(string elementRef, MouseEventArgs e)
+    // Mousedown on the SVG: identify which element (if any) is under the cursor via JS,
+    // then start drag. Using the SVG-level event is more reliable than attaching
+    // @onmousedown to individual SVG child elements in Blazor WASM.
+    private async Task HandleSvgMouseDown(MouseEventArgs e)
     {
         if (State.ActiveTool != "move") return;
+        string? elementRef = null;
+        try
+        {
+            elementRef = await JS.InvokeAsync<string?>(
+                "diagramInterop.getElementRefAt", _svgId, e.ClientX, e.ClientY);
+        }
+        catch (JSException) { }
+        if (string.IsNullOrEmpty(elementRef)) return;
         _draggingRef = elementRef;
         State.BeginDrag();
         _dotNetRef ??= DotNetObjectReference.Create(this);
-        try
-        {
-            await JS.InvokeVoidAsync("diagramInterop.startDrag", _dotNetRef, _svgId);
-        }
-        catch (JSException) { /* test environment — drag won't fire JS callbacks */ }
+        try { await JS.InvokeVoidAsync("diagramInterop.startDrag", _dotNetRef, _svgId); }
+        catch (JSException) { }
     }
 
-    [JSInvokable]
-    public void OnDragMove(double x, double y)
-    {
-        if (_draggingRef == null) return;
-        State.PreviewMove(_draggingRef, x, y);
-        // JS callbacks arrive off Blazor's sync context, so StateHasChanged()
-        // can't be called directly — InvokeAsync marshals it back onto the renderer thread.
-        _ = InvokeAsync(StateHasChanged);
-    }
+    // Mouseup inside the SVG ends drag immediately.
+    private void HandleSvgMouseUp(MouseEventArgs e) => _draggingRef = null;
 
+    // Called by JS when mouseup fires outside the SVG (window mouseup listener).
     [JSInvokable]
-    public void OnDragComplete(double x, double y)
+    public void OnDragEnd()
     {
-        if (_draggingRef == null) return;
-        State.PreviewMove(_draggingRef, x, y);
         _draggingRef = null;
-        // JS callbacks arrive off Blazor's sync context, so StateHasChanged()
-        // can't be called directly — InvokeAsync marshals it back onto the renderer thread.
         _ = InvokeAsync(StateHasChanged);
     }
 
@@ -351,28 +405,26 @@
 
     private async Task HandleMouseMove(MouseEventArgs e)
     {
-        if (!IsPlacementTool) return;
+        if (!IsPlacementTool && _draggingRef == null) return;
+
+        double x = e.OffsetX;
+        double y = e.OffsetY;
         try
         {
             var coords = await JS.InvokeAsync<SvgCoords>(
                 "diagramInterop.getSvgCoordinates", _svgId, e.ClientX, e.ClientY);
-            if (coords is not null)
-            {
-                _ghostX = coords.X;
-                _ghostY = coords.Y * _pitchHeight / 100.0;
-            }
-            else
-            {
-                _ghostX = e.OffsetX;
-                _ghostY = e.OffsetY;
-            }
+            if (coords is not null) { x = coords.X; y = coords.Y; }
         }
-        catch (JSException)
+        catch (Exception) { /* JS unavailable or not set up — fall back to offset coordinates */ }
+
+        if (IsPlacementTool)
         {
-            // Test environment — ghost position will be approximate
-            _ghostX = e.OffsetX;
-            _ghostY = e.OffsetY;
+            _ghostX = x;
+            _ghostY = y * _pitchHeight / 100.0;
         }
+
+        if (_draggingRef != null)
+            State.PreviewMove(_draggingRef, x, y);
     }
 
     private string BuildArrowPath(ArrowElement arrow)

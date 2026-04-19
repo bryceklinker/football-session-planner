@@ -2,6 +2,7 @@ using Bunit;
 using FootballPlanner.Web.Components;
 using FootballPlanner.Web.Models;
 using MudBlazor.Services;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FootballPlanner.Component.Tests.Components;
@@ -105,67 +106,70 @@ public class DiagramCanvasTests : TestContext
     }
 
     [Fact]
-    public void OnDragMove_UpdatesElementPosition()
+    public void Drag_WhenMouseMoves_UpdatesConePosition()
     {
         var state = DefaultState();
         state.SetTool("move");
         state.PlaceCone(10.0, 20.0);
 
-        var cut = RenderComponent<DiagramCanvas>(
-            p => p.Add(x => x.State, state));
+        // Use strict mode so getElementRefAt and startDrag are properly mocked.
+        // getSvgCoordinates is intentionally not set up — HandleMouseMove falls
+        // back to OffsetX/OffsetY when JS throws.
+        JSInterop.Mode = JSRuntimeMode.Strict;
+        JSInterop.Setup<string?>("diagramInterop.getElementRefAt", _ => true).SetResult("cones/0");
+        JSInterop.SetupVoid("diagramInterop.startDrag", _ => true);
+        JSInterop.SetupVoid("diagramInterop.cleanup", _ => true);
 
-        // Mousedown on the cone element starts the drag (sets _draggingRef)
-        cut.Find("polygon[data-element^='cones']").MouseDown();
+        var cut = RenderComponent<DiagramCanvas>(p => p.Add(x => x.State, state));
 
-        // Simulate JS callback
-        cut.Instance.OnDragMove(50.0, 60.0);
-        cut.Render();
+        // SVG mousedown identifies the cone and starts drag
+        cut.Find("svg").MouseDown(new MouseEventArgs { ClientX = 10, ClientY = 20 });
+        // SVG mousemove: JS getSvgCoordinates not set up → falls back to OffsetX/OffsetY
+        cut.Find("svg").MouseMove(new MouseEventArgs { OffsetX = 50.0, OffsetY = 60.0 });
 
         Assert.Equal(50.0, state.Diagram.Cones[0].X);
         Assert.Equal(60.0, state.Diagram.Cones[0].Y);
     }
 
     [Fact]
-    public void OnMouseDown_WithNonMoveTool_DoesNotStartDrag()
+    public void Drag_WithNonMoveTool_DoesNotUpdatePosition()
     {
         var state = DefaultState();
         state.SetTool("player"); // not "move"
         state.PlaceCone(10.0, 20.0);
 
-        var cut = RenderComponent<DiagramCanvas>(
-            p => p.Add(x => x.State, state));
+        var cut = RenderComponent<DiagramCanvas>(p => p.Add(x => x.State, state));
 
-        cut.Find("polygon[data-element^='cones']").MouseDown();
+        // HandleSvgMouseDown returns early because ActiveTool != "move"
+        cut.Find("svg").MouseDown(new MouseEventArgs());
+        // Mousemove: _draggingRef is null — no PreviewMove called
+        cut.Find("svg").MouseMove(new MouseEventArgs { OffsetX = 50.0, OffsetY = 60.0 });
 
-        // OnDragMove should be a no-op since _draggingRef was never set
-        cut.Instance.OnDragMove(50.0, 60.0);
-        cut.Render();
-
-        // Position should be unchanged
         Assert.Equal(10.0, state.Diagram.Cones[0].X);
         Assert.Equal(20.0, state.Diagram.Cones[0].Y);
     }
 
     [Fact]
-    public void OnDragComplete_UpdatesPositionAndClearsDragging()
+    public void Drag_WhenMouseReleased_EndsDrag()
     {
         var state = DefaultState();
         state.SetTool("move");
         state.PlaceCone(10.0, 20.0);
 
-        var cut = RenderComponent<DiagramCanvas>(
-            p => p.Add(x => x.State, state));
+        JSInterop.Mode = JSRuntimeMode.Strict;
+        JSInterop.Setup<string?>("diagramInterop.getElementRefAt", _ => true).SetResult("cones/0");
+        JSInterop.SetupVoid("diagramInterop.startDrag", _ => true);
+        JSInterop.SetupVoid("diagramInterop.cleanup", _ => true);
 
-        cut.Find("polygon[data-element^='cones']").MouseDown();
-        cut.Instance.OnDragComplete(50.0, 60.0);
-        cut.Render();
+        var cut = RenderComponent<DiagramCanvas>(p => p.Add(x => x.State, state));
 
-        Assert.Equal(50.0, state.Diagram.Cones[0].X);
-        Assert.Equal(60.0, state.Diagram.Cones[0].Y);
+        cut.Find("svg").MouseDown(new MouseEventArgs { ClientX = 10, ClientY = 20 });
+        cut.Find("svg").MouseMove(new MouseEventArgs { OffsetX = 50.0, OffsetY = 60.0 });
+        // Mouseup clears _draggingRef
+        cut.Find("svg").MouseUp(new MouseEventArgs());
 
-        // After OnDragComplete, _draggingRef is cleared — further OnDragMove is a no-op
-        cut.Instance.OnDragMove(99.0, 99.0);
-        cut.Render();
+        // Further mousemove should not update position
+        cut.Find("svg").MouseMove(new MouseEventArgs { OffsetX = 90.0, OffsetY = 90.0 });
 
         Assert.Equal(50.0, state.Diagram.Cones[0].X);
         Assert.Equal(60.0, state.Diagram.Cones[0].Y);

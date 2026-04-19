@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FootballPlanner.Component.Tests.Components;
 
-public class DiagramEditorModalTests : TestContext
+public class DiagramEditorModalTests : BunitContext, IAsyncLifetime
 {
     private readonly TestHttpMessageHandler _httpHandler = new();
 
@@ -22,8 +22,12 @@ public class DiagramEditorModalTests : TestContext
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
 
+    public Task InitializeAsync() => Task.CompletedTask;
+    public async Task DisposeAsync() => await ((IAsyncDisposable)this).DisposeAsync();
+    protected override void Dispose(bool disposing) { }
+
     private IRenderedComponent<MudDialogProvider> SetupDialogProvider()
-        => RenderComponent<MudDialogProvider>();
+        => Render<MudDialogProvider>();
 
     private sealed class TestHttpMessageHandler : HttpMessageHandler
     {

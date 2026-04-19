@@ -6,13 +6,17 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FootballPlanner.Component.Tests.Components;
 
-public class DiagramTeamsPanelTests : TestContext
+public class DiagramTeamsPanelTests : BunitContext, IAsyncLifetime
 {
     public DiagramTeamsPanelTests()
     {
         Services.AddMudServices();
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
+
+    public Task InitializeAsync() => Task.CompletedTask;
+    public async Task DisposeAsync() => await ((IAsyncDisposable)this).DisposeAsync();
+    protected override void Dispose(bool disposing) { }
 
     private static DiagramEditorState DefaultState()
     {
@@ -26,7 +30,7 @@ public class DiagramTeamsPanelTests : TestContext
     {
         var state = DefaultState();
 
-        var cut = RenderComponent<DiagramTeamsPanel>(
+        var cut = Render<DiagramTeamsPanel>(
             p => p.Add(x => x.State, state));
 
         Assert.Contains("Red", cut.Markup);
@@ -37,7 +41,7 @@ public class DiagramTeamsPanelTests : TestContext
     public void ClickAddTeam_AddsThirdTeam()
     {
         var state = DefaultState();
-        var cut = RenderComponent<DiagramTeamsPanel>(
+        var cut = Render<DiagramTeamsPanel>(
             p => p.Add(x => x.State, state));
 
         cut.Find("[data-testid='add-team']").Click();
@@ -49,7 +53,7 @@ public class DiagramTeamsPanelTests : TestContext
     public void ClickDeleteTeam_RemovesTeam()
     {
         var state = DefaultState();
-        var cut = RenderComponent<DiagramTeamsPanel>(
+        var cut = Render<DiagramTeamsPanel>(
             p => p.Add(x => x.State, state));
 
         cut.Find("[aria-label='Delete team t1']").Click();
@@ -62,7 +66,7 @@ public class DiagramTeamsPanelTests : TestContext
     public void ClickTeam_SetsActiveTeamId()
     {
         var state = DefaultState();
-        var cut = RenderComponent<DiagramTeamsPanel>(
+        var cut = Render<DiagramTeamsPanel>(
             p => p.Add(x => x.State, state));
 
         cut.Find("[data-testid='select-team-t2']").Click();

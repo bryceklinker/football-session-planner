@@ -7,13 +7,17 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FootballPlanner.Component.Tests.Components;
 
-public class DiagramCanvasTests : TestContext
+public class DiagramCanvasTests : BunitContext, IAsyncLifetime
 {
     public DiagramCanvasTests()
     {
         Services.AddMudServices();
         JSInterop.Mode = JSRuntimeMode.Loose;
     }
+
+    public Task InitializeAsync() => Task.CompletedTask;
+    public async Task DisposeAsync() => await ((IAsyncDisposable)this).DisposeAsync();
+    protected override void Dispose(bool disposing) { }
 
     private static DiagramEditorState DefaultState()
     {
@@ -27,7 +31,7 @@ public class DiagramCanvasTests : TestContext
     {
         var state = DefaultState();
 
-        var cut = RenderComponent<DiagramCanvas>(
+        var cut = Render<DiagramCanvas>(
             p => p.Add(x => x.State, state));
 
         Assert.NotNull(cut.Find("svg"));
@@ -41,7 +45,7 @@ public class DiagramCanvasTests : TestContext
         state.PlacePlayer(25.0, 50.0);
         state.PlacePlayer(35.0, 60.0);
 
-        var cut = RenderComponent<DiagramCanvas>(
+        var cut = Render<DiagramCanvas>(
             p => p.Add(x => x.State, state));
 
         var circles = cut.FindAll("circle[data-element]");
@@ -54,7 +58,7 @@ public class DiagramCanvasTests : TestContext
         var state = DefaultState();
         state.PlaceCoach(50.0, 10.0);
 
-        var cut = RenderComponent<DiagramCanvas>(
+        var cut = Render<DiagramCanvas>(
             p => p.Add(x => x.State, state));
 
         Assert.NotNull(cut.Find("circle[data-element^='coaches']"));
@@ -66,7 +70,7 @@ public class DiagramCanvasTests : TestContext
         var state = DefaultState();
         state.PlaceCone(30.0, 40.0);
 
-        var cut = RenderComponent<DiagramCanvas>(
+        var cut = Render<DiagramCanvas>(
             p => p.Add(x => x.State, state));
 
         Assert.NotNull(cut.Find("polygon[data-element^='cones']"));
@@ -80,7 +84,7 @@ public class DiagramCanvasTests : TestContext
         state.HandleArrowPoint(10.0, 20.0);
         state.HandleArrowPoint(80.0, 70.0);
 
-        var cut = RenderComponent<DiagramCanvas>(
+        var cut = Render<DiagramCanvas>(
             p => p.Add(x => x.State, state));
 
         Assert.NotNull(cut.Find("path[data-element^='arrows']"));
@@ -94,7 +98,7 @@ public class DiagramCanvasTests : TestContext
         state.SetActiveTeam("t1");
         var fired = false;
 
-        var cut = RenderComponent<DiagramCanvas>(p =>
+        var cut = Render<DiagramCanvas>(p =>
         {
             p.Add(x => x.State, state);
             p.Add(x => x.OnPlacePlayer, (_) => fired = true);
@@ -119,7 +123,7 @@ public class DiagramCanvasTests : TestContext
         JSInterop.SetupVoid("diagramInterop.startDrag", _ => true);
         JSInterop.SetupVoid("diagramInterop.cleanup", _ => true);
 
-        var cut = RenderComponent<DiagramCanvas>(p => p.Add(x => x.State, state));
+        var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
 
         // SVG mousedown identifies the cone and starts drag
         cut.Find("svg").MouseDown(new MouseEventArgs { ClientX = 10, ClientY = 20 });
@@ -137,7 +141,7 @@ public class DiagramCanvasTests : TestContext
         state.SetTool("player"); // not "move"
         state.PlaceCone(10.0, 20.0);
 
-        var cut = RenderComponent<DiagramCanvas>(p => p.Add(x => x.State, state));
+        var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
 
         // HandleSvgMouseDown returns early because ActiveTool != "move" — startDrag never called
         cut.Find("svg").MouseDown(new MouseEventArgs());
@@ -160,7 +164,7 @@ public class DiagramCanvasTests : TestContext
         JSInterop.SetupVoid("diagramInterop.startDrag", _ => true);
         JSInterop.SetupVoid("diagramInterop.cleanup", _ => true);
 
-        var cut = RenderComponent<DiagramCanvas>(p => p.Add(x => x.State, state));
+        var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
 
         cut.Find("svg").MouseDown(new MouseEventArgs { ClientX = 10, ClientY = 20 });
         cut.Instance.OnDragMove(50.0, 60.0);

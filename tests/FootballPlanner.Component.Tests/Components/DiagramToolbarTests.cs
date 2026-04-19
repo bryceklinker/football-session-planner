@@ -8,14 +8,18 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace FootballPlanner.Component.Tests.Components;
 
-public class DiagramToolbarTests : TestContext
+public class DiagramToolbarTests : BunitContext, IAsyncLifetime
 {
     public DiagramToolbarTests()
     {
         Services.AddMudServices();
         JSInterop.Mode = JSRuntimeMode.Loose;
-        RenderComponent<MudPopoverProvider>();
+        Render<MudPopoverProvider>();
     }
+
+    public Task InitializeAsync() => Task.CompletedTask;
+    public async Task DisposeAsync() => await ((IAsyncDisposable)this).DisposeAsync();
+    protected override void Dispose(bool disposing) { }
 
     private static DiagramEditorState DefaultState()
     {
@@ -38,7 +42,7 @@ public class DiagramToolbarTests : TestContext
     {
         var state = DefaultState();
         var onChangedFired = false;
-        var cut = RenderComponent<DiagramToolbar>(p =>
+        var cut = Render<DiagramToolbar>(p =>
         {
             p.Add(x => x.State, state);
             p.Add(x => x.OnChanged, () => onChangedFired = true);
@@ -55,7 +59,7 @@ public class DiagramToolbarTests : TestContext
     {
         var state = DefaultState();
         state.SetTool("player");
-        var cut = RenderComponent<DiagramToolbar>(p => p.Add(x => x.State, state));
+        var cut = Render<DiagramToolbar>(p => p.Add(x => x.State, state));
 
         var btn = cut.Find("[aria-label='Place player']");
 
@@ -67,7 +71,7 @@ public class DiagramToolbarTests : TestContext
     {
         var state = DefaultState();
         state.SetTool("cone"); // player is not active
-        var cut = RenderComponent<DiagramToolbar>(p => p.Add(x => x.State, state));
+        var cut = Render<DiagramToolbar>(p => p.Add(x => x.State, state));
 
         var btn = cut.Find("[aria-label='Place player']");
 
@@ -79,7 +83,7 @@ public class DiagramToolbarTests : TestContext
     {
         var state = DefaultState();
         var onChangedFired = false;
-        var cut = RenderComponent<DiagramToolbar>(p =>
+        var cut = Render<DiagramToolbar>(p =>
         {
             p.Add(x => x.State, state);
             p.Add(x => x.OnChanged, () => onChangedFired = true);
@@ -96,7 +100,7 @@ public class DiagramToolbarTests : TestContext
     public async Task FormatSelect_SelectingCustom_ShowsWidthAndHeightFields()
     {
         var state = DefaultState();
-        var cut = RenderComponent<DiagramToolbar>(p => p.Add(x => x.State, state));
+        var cut = Render<DiagramToolbar>(p => p.Add(x => x.State, state));
 
         var select = cut.FindComponent<MudSelect<PitchFormat>>();
         await cut.InvokeAsync(() => select.Instance.ValueChanged.InvokeAsync(PitchFormat.Custom));
@@ -113,7 +117,7 @@ public class DiagramToolbarTests : TestContext
         var state = DefaultState();
         state.SetPitchFormat(PitchFormat.Custom, customWidth: 100.0, customHeight: 64.0);
         var onChangedFired = false;
-        var cut = RenderComponent<DiagramToolbar>(p =>
+        var cut = Render<DiagramToolbar>(p =>
         {
             p.Add(x => x.State, state);
             p.Add(x => x.OnChanged, () => onChangedFired = true);
@@ -134,7 +138,7 @@ public class DiagramToolbarTests : TestContext
         var state = DefaultState();
         state.SetPitchFormat(PitchFormat.Custom, customWidth: 100.0, customHeight: 64.0);
         var onChangedFired = false;
-        var cut = RenderComponent<DiagramToolbar>(p =>
+        var cut = Render<DiagramToolbar>(p =>
         {
             p.Add(x => x.State, state);
             p.Add(x => x.OnChanged, () => onChangedFired = true);

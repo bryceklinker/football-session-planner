@@ -103,6 +103,7 @@
     private async Task HandleToolClick(string tool)
     {
         State.SetTool(tool);
+        StateHasChanged();
         await OnChanged.InvokeAsync();
     }
 

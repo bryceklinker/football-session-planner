@@ -54,12 +54,12 @@
         var kref = $"coaches/{ki}";
         <circle data-element="@kref"
                 cx="@coach.X" cy="@(coach.Y * _pitchHeight / 100)"
-                r="3" fill="#f0a500" stroke="white" stroke-width="0.5"
+                r="2" fill="#f0a500" stroke="white" stroke-width="0.4"
                 style="cursor:pointer;"
                 @onmousedown="e => HandleElementMouseDown(kref, e)"
                 @onclick:stopPropagation="true"
                 @onclick="() => HandleElementClick(kref)"/>
-        @((MarkupString)$"<text x=\"{coach.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" y=\"{(coach.Y * _pitchHeight / 100 + 0.8).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"white\" font-size=\"2.5\" font-weight=\"bold\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(coach.Label)}</text>")
+        @((MarkupString)$"<text x=\"{coach.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" y=\"{(coach.Y * _pitchHeight / 100).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"white\" font-size=\"1.8\" font-weight=\"bold\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(coach.Label)}</text>")
     }
 
     <!-- Players -->
@@ -72,14 +72,14 @@
             var pref = $"teams/{ti}/players/{pi}";
             <circle data-element="@pref"
                     cx="@player.X" cy="@(player.Y * _pitchHeight / 100)"
-                    r="3" fill="@team.Color" stroke="white" stroke-width="0.5"
+                    r="2" fill="@team.Color" stroke="white" stroke-width="0.4"
                     style="cursor:pointer;"
                     @onmousedown="e => HandleElementMouseDown(pref, e)"
                     @onclick:stopPropagation="true"
                     @onclick="() => HandleElementClick(pref)"/>
             @if (!string.IsNullOrEmpty(player.Label))
             {
-                @((MarkupString)$"<text x=\"{player.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" y=\"{(player.Y * _pitchHeight / 100 + 0.8).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"white\" font-size=\"2.5\" font-weight=\"bold\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(player.Label)}</text>")
+                @((MarkupString)$"<text x=\"{player.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" y=\"{(player.Y * _pitchHeight / 100).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"white\" font-size=\"1.8\" font-weight=\"bold\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(player.Label)}</text>")
             }
         }
     }
@@ -91,14 +91,14 @@
         var aref = $"arrows/{ai}";
         var (stroke, dasharray, markerId) = arrow.Style switch
         {
-            ArrowStyle.Pass    => ("#90caf9", "4,3",  $"arr-pass-{_svgId}"),
+            ArrowStyle.Pass    => ("#90caf9", "2,2",  $"arr-pass-{_svgId}"),
             ArrowStyle.Dribble => ("#ffcc80", "none", $"arr-dribble-{_svgId}"),
             _                  => ("white",   "none", $"arr-run-{_svgId}")
         };
         <path data-element="@aref"
               d="@BuildArrowPath(arrow)"
               stroke="@stroke"
-              stroke-width="@(arrow.Style == ArrowStyle.Pass ? "0.8" : "1")"
+              stroke-width="@(arrow.Style == ArrowStyle.Pass ? "0.4" : "0.5")"
               stroke-dasharray="@dasharray"
               fill="none"
               marker-end="url(#@markerId)"
@@ -112,8 +112,8 @@
     @if (_ghostX >= 0 && IsPlacementTool)
     {
         <circle cx="@_ghostX" cy="@_ghostY"
-                r="3" fill="rgba(255,255,255,0.25)" stroke="rgba(255,255,255,0.5)"
-                stroke-dasharray="1,1" stroke-width="0.5"
+                r="2" fill="rgba(255,255,255,0.25)" stroke="rgba(255,255,255,0.5)"
+                stroke-dasharray="1,1" stroke-width="0.4"
                 pointer-events="none"/>
     }
 </svg>

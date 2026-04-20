@@ -31,6 +31,7 @@
         var goal = State.Diagram.Goals[gi];
         var gref = $"goals/{gi}";
         <rect data-element="@gref"
+              transform="translate(0,0)"
               x="@goal.X" y="@(goal.Y * _pitchHeight / 100)"
               width="@goal.Width" height="@(goal.Width / 7.0)"
               fill="none" stroke="white" stroke-width="0.8"
@@ -45,6 +46,7 @@
         var cone = State.Diagram.Cones[ci];
         var cref = $"cones/{ci}";
         <polygon data-element="@cref"
+                 transform="translate(0,0)"
                  points="@cone.X,@(cone.Y * _pitchHeight / 100 - 2) @(cone.X - 1.5),@(cone.Y * _pitchHeight / 100 + 1) @(cone.X + 1.5),@(cone.Y * _pitchHeight / 100 + 1)"
                  fill="#f0a500"
                  style="cursor:pointer;"
@@ -58,6 +60,7 @@
         var coach = State.Diagram.Coaches[ki];
         var kref = $"coaches/{ki}";
         <g data-element="@kref"
+           transform="translate(0,0)"
            style="cursor:pointer;"
            @onclick:stopPropagation="true"
            @onclick="() => HandleElementClick(kref)">
@@ -76,6 +79,7 @@
             var player = team.Players[pi];
             var pref = $"teams/{ti}/players/{pi}";
             <g data-element="@pref"
+               transform="translate(0,0)"
                style="cursor:pointer;"
                @onclick:stopPropagation="true"
                @onclick="() => HandleElementClick(pref)">
@@ -101,6 +105,7 @@
             _ => ("white", "none", $"arr-run-{_svgId}")
         };
         <path data-element="@aref"
+              transform="translate(0,0)"
               d="@BuildArrowPath(arrow)"
               stroke="@stroke"
               stroke-width="@(arrow.Style == ArrowStyle.Pass ? "0.4" : "0.5")"

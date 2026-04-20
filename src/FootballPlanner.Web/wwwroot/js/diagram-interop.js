@@ -118,9 +118,9 @@ window.diagramInterop = (function () {
 
             activeElement = null;
             activeSvgEl = null;
-            // Remove the transform now so Blazor's re-render positions the element
-            // correctly without any accumulated offset from the drag session.
-            if (svgElToReset) svgElToReset.removeAttribute('transform');
+            // Do NOT remove the transform here — Blazor resets it to translate(0,0)
+            // when it re-renders the element at the new model position, so the
+            // transition is seamless with no snap-back frame.
 
             dotNetRef.invokeMethodAsync('OnDragEnd', fx, fy)
                 .catch(function(err) { console.error('[diagramInterop] OnDragEnd failed:', err); });

@@ -50,8 +50,9 @@ window.diagramInterop = (function () {
 
         let activeElement = null;  // element ref string ("cones/0", etc.)
         let activeSvgEl = null;    // the actual dragged SVG DOM element
-        let startX = 0, startY = 0; // drag-start position in SVG % coords
+        let startX = 0, startY = 0; // drag-start cursor position in SVG % coords
         let lastX = 0, lastY = 0;   // most recent cursor position in SVG % coords
+        let baseX = 0, baseY = 0;   // element's model position at drag start
 
         const onMouseDown = function(ev) {
             // Walk up from event target to find the nearest [data-element] ancestor.
@@ -75,8 +76,18 @@ window.diagramInterop = (function () {
             startY = c.y;
             lastX = c.x;
             lastY = c.y;
+            baseX = c.x; // temporary fallback until C# returns the model position
+            baseY = c.y;
 
             dotNetRef.invokeMethodAsync('OnElementMouseDown', elementRef)
+                .then(function(pos) {
+                    // C# returns { x, y } = element's model position at drag start.
+                    // Update base only if this drag is still active.
+                    if (pos && activeElement === elementRef) {
+                        baseX = pos.x;
+                        baseY = pos.y;
+                    }
+                })
                 .catch(function(err) { console.error('[diagramInterop] OnElementMouseDown failed:', err); });
         };
 
@@ -97,13 +108,19 @@ window.diagramInterop = (function () {
         const onUp = function() {
             if (!activeElement) return;
             const ref = activeElement;
-            const fx = lastX;
-            const fy = lastY;
+            // Compute final model position as basePos + delta so the element lands
+            // exactly where it appears visually, regardless of where the user grabbed it.
+            const fx = baseX + (lastX - startX);
+            const fy = baseY + (lastY - startY);
+            const svgElToReset = activeSvgEl;
             console.log('[diagramInterop] mouseup: ref=' + ref +
                         ' finalX=' + fx.toFixed(1) + ' finalY=' + fy.toFixed(1));
 
             activeElement = null;
-            activeSvgEl = null; // Blazor re-render will replace the element without transform
+            activeSvgEl = null;
+            // Remove the transform now so Blazor's re-render positions the element
+            // correctly without any accumulated offset from the drag session.
+            if (svgElToReset) svgElToReset.removeAttribute('transform');
 
             dotNetRef.invokeMethodAsync('OnDragEnd', fx, fy)
                 .catch(function(err) { console.error('[diagramInterop] OnDragEnd failed:', err); });

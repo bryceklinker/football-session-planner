@@ -204,7 +204,7 @@ public class DiagramEditorModalTests : BunitContext, IAsyncLifetime
         provider.Find("[aria-label='Place player']").Click();
         provider.Find("svg[id^='pitch-']").Click();
 
-        Assert.NotEmpty(provider.FindAll("circle[data-element]"));
+        Assert.NotEmpty(provider.FindAll("[data-element^='teams']"));
     }
 
     [Fact]

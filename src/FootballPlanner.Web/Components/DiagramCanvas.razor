@@ -57,13 +57,14 @@
     {
         var coach = State.Diagram.Coaches[ki];
         var kref = $"coaches/{ki}";
-        <circle data-element="@kref"
-                cx="@coach.X" cy="@(coach.Y * _pitchHeight / 100)"
-                r="2" fill="#f0a500" stroke="white" stroke-width="0.4"
-                style="cursor:pointer;"
-                @onclick:stopPropagation="true"
-                @onclick="() => HandleElementClick(kref)"/>
-        @((MarkupString)$"<text x=\"{coach.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" y=\"{(coach.Y * _pitchHeight / 100).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"white\" font-size=\"1.8\" font-weight=\"bold\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(coach.Label)}</text>")
+        <g data-element="@kref"
+           style="cursor:pointer;"
+           @onclick:stopPropagation="true"
+           @onclick="() => HandleElementClick(kref)">
+            <circle cx="@coach.X" cy="@(coach.Y * _pitchHeight / 100)"
+                    r="2" fill="#f0a500" stroke="white" stroke-width="0.4"/>
+            @((MarkupString)$"<text x=\"{coach.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" y=\"{(coach.Y * _pitchHeight / 100).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"white\" font-size=\"1.8\" font-weight=\"bold\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(coach.Label)}</text>")
+        </g>
     }
 
     <!-- Players -->
@@ -74,16 +75,17 @@
         {
             var player = team.Players[pi];
             var pref = $"teams/{ti}/players/{pi}";
-            <circle data-element="@pref"
-                    cx="@player.X" cy="@(player.Y * _pitchHeight / 100)"
-                    r="2" fill="@team.Color" stroke="white" stroke-width="0.4"
-                    style="cursor:pointer;"
-                    @onclick:stopPropagation="true"
-                    @onclick="() => HandleElementClick(pref)"/>
-            @if (!string.IsNullOrEmpty(player.Label))
-            {
-                @((MarkupString)$"<text x=\"{player.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" y=\"{(player.Y * _pitchHeight / 100).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"white\" font-size=\"1.8\" font-weight=\"bold\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(player.Label)}</text>")
-            }
+            <g data-element="@pref"
+               style="cursor:pointer;"
+               @onclick:stopPropagation="true"
+               @onclick="() => HandleElementClick(pref)">
+                <circle cx="@player.X" cy="@(player.Y * _pitchHeight / 100)"
+                        r="2" fill="@team.Color" stroke="white" stroke-width="0.4"/>
+                @if (!string.IsNullOrEmpty(player.Label))
+                {
+                    @((MarkupString)$"<text x=\"{player.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" y=\"{(player.Y * _pitchHeight / 100).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"white\" font-size=\"1.8\" font-weight=\"bold\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(player.Label)}</text>")
+                }
+            </g>
         }
     }
 
@@ -363,15 +365,16 @@
     };
 
     // Called by JS when mousedown fires on a [data-element] child of the SVG.
-    // Registered via diagramInterop.attachDrag() in OnAfterRenderAsync.
+    // Returns the element's current model (x, y) so JS can compute the final
+    // position as basePos + dragDelta rather than using raw cursor coordinates.
     [JSInvokable]
-    public void OnElementMouseDown(string elementRef)
+    public object? OnElementMouseDown(string elementRef)
     {
-        Console.WriteLine($"[DiagramCanvas] OnElementMouseDown: element={elementRef} tool={State.ActiveTool}");
-        if (State.ActiveTool != "move") return;
+        if (State.ActiveTool != "move") return null;
         _draggingRef = elementRef;
         State.BeginDrag();
-        Console.WriteLine($"[DiagramCanvas] drag started: draggingRef={_draggingRef}");
+        var (x, y) = State.GetElementPosition(elementRef);
+        return new { x, y };
     }
 
     // Called by JS window.mouseup with the final cursor position.

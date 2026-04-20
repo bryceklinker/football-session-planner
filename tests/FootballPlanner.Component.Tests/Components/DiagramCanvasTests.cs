@@ -47,7 +47,7 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
         var cut = Render<DiagramCanvas>(
             p => p.Add(x => x.State, state));
 
-        var circles = cut.FindAll("circle[data-element]");
+        var circles = cut.FindAll("[data-element^='teams']");
         Assert.Equal(2, circles.Count);
     }
 
@@ -60,7 +60,7 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
         var cut = Render<DiagramCanvas>(
             p => p.Add(x => x.State, state));
 
-        Assert.NotNull(cut.Find("circle[data-element^='coaches']"));
+        Assert.NotNull(cut.Find("[data-element^='coaches']"));
     }
 
     [Fact]

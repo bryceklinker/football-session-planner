@@ -96,6 +96,22 @@ public class DiagramEditorState
 
     public void BeginDrag() => PushUndo();
 
+    public (double X, double Y) GetElementPosition(string elementRef)
+    {
+        var parts = elementRef.Split('/');
+        if (parts.Length < 2 || !int.TryParse(parts[1], out var idx)) return (0, 0);
+        return parts[0] switch
+        {
+            "teams" when parts.Length >= 4 && int.TryParse(parts[3], out var pIdx)
+                => (Diagram.Teams[idx].Players[pIdx].X, Diagram.Teams[idx].Players[pIdx].Y),
+            "coaches" => (Diagram.Coaches[idx].X, Diagram.Coaches[idx].Y),
+            "cones"   => (Diagram.Cones[idx].X, Diagram.Cones[idx].Y),
+            "goals"   => (Diagram.Goals[idx].X, Diagram.Goals[idx].Y),
+            "arrows"  => (Diagram.Arrows[idx].X2, Diagram.Arrows[idx].Y2),
+            _ => (0, 0)
+        };
+    }
+
     public void PreviewMove(string elementRef, double x, double y)
         => Diagram = ApplyMove(Diagram, elementRef, x, y);
 

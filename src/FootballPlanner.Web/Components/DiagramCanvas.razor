@@ -2,6 +2,7 @@
 @using Microsoft.JSInterop
 @implements IAsyncDisposable
 @inject IJSRuntime JS
+@inject ILogger<DiagramCanvas> Logger
 
 <svg id="@_svgId"
      viewBox="0 0 100 @_pitchHeight.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
@@ -13,9 +14,15 @@
      @onmousemove="HandleMouseMove">
 
     <defs>
-        <marker id="arr-run-@_svgId"     markerWidth="4" markerHeight="3" refX="4" refY="1.5" orient="auto"><polygon points="0 0,4 1.5,0 3" fill="white"/></marker>
-        <marker id="arr-pass-@_svgId"    markerWidth="4" markerHeight="3" refX="4" refY="1.5" orient="auto"><polygon points="0 0,4 1.5,0 3" fill="#90caf9"/></marker>
-        <marker id="arr-dribble-@_svgId" markerWidth="4" markerHeight="3" refX="4" refY="1.5" orient="auto"><polygon points="0 0,4 1.5,0 3" fill="#ffcc80"/></marker>
+        <marker id="arr-run-@_svgId" markerWidth="4" markerHeight="3" refX="4" refY="1.5" orient="auto">
+            <polygon points="0 0,4 1.5,0 3" fill="white"/>
+        </marker>
+        <marker id="arr-pass-@_svgId" markerWidth="4" markerHeight="3" refX="4" refY="1.5" orient="auto">
+            <polygon points="0 0,4 1.5,0 3" fill="#90caf9"/>
+        </marker>
+        <marker id="arr-dribble-@_svgId" markerWidth="4" markerHeight="3" refX="4" refY="1.5" orient="auto">
+            <polygon points="0 0,4 1.5,0 3" fill="#ffcc80"/>
+        </marker>
     </defs>
 
     <!-- Pitch markings -->
@@ -102,9 +109,9 @@
         var aref = $"arrows/{ai}";
         var (stroke, dasharray, markerId) = arrow.Style switch
         {
-            ArrowStyle.Pass    => ("#90caf9", "2,2",  $"arr-pass-{_svgId}"),
+            ArrowStyle.Pass => ("#90caf9", "2,2", $"arr-pass-{_svgId}"),
             ArrowStyle.Dribble => ("#ffcc80", "none", $"arr-dribble-{_svgId}"),
-            _                  => ("white",   "none", $"arr-run-{_svgId}")
+            _ => ("white", "none", $"arr-run-{_svgId}")
         };
         <path data-element="@aref"
               d="@BuildArrowPath(arrow)"
@@ -149,13 +156,13 @@
     private double _pitchHeight => State.Diagram.PitchFormat switch
     {
         // Full field: height = WidthM / LengthM × 100
-        PitchFormat.ElevenVElevenFull => 64.76,   // 68/105 × 100
-        PitchFormat.NineVNineFull     => 62.5,    // 50/80  × 100
-        PitchFormat.SevenVSevenFull   => 66.67,   // 40/60  × 100
+        PitchFormat.ElevenVElevenFull => 64.76, // 68/105 × 100
+        PitchFormat.NineVNineFull => 62.5, // 50/80  × 100
+        PitchFormat.SevenVSevenFull => 66.67, // 40/60  × 100
         // Half field (rotated, goal at bottom): same canvas size as full field
         PitchFormat.ElevenVElevenHalf => 64.76,
-        PitchFormat.NineVNineHalf     => 62.5,
-        PitchFormat.SevenVSevenHalf   => 66.67,
+        PitchFormat.NineVNineHalf => 62.5,
+        PitchFormat.SevenVSevenHalf => 66.67,
         PitchFormat.Custom when State.Diagram is { CustomHeight: { } h, CustomWidth: { } w }
             => h / w * 100.0,
         _ => 64.76
@@ -165,16 +172,21 @@
     // LengthM = goal-to-goal distance (or goal-to-centre for half-field formats).
     // WidthM  = touchline-to-touchline.
     private record PitchDimensions(
-        double LengthM, double WidthM,
-        double PenAreaDepthM, double PenAreaHalfWidthM,
-        double SixYardDepthM, double SixYardHalfWidthM,
-        double PenSpotM, double CircleRadiusM, double GoalHalfWidthM);
+        double LengthM,
+        double WidthM,
+        double PenAreaDepthM,
+        double PenAreaHalfWidthM,
+        double SixYardDepthM,
+        double SixYardHalfWidthM,
+        double PenSpotM,
+        double CircleRadiusM,
+        double GoalHalfWidthM);
 
     private PitchDimensions _dims => State.Diagram.PitchFormat switch
     {
         PitchFormat.ElevenVElevenFull or PitchFormat.ElevenVElevenHalf => new(105, 68, 16.5, 20.16, 5.5, 9.16, 11, 9.15, 3.66),
-        PitchFormat.NineVNineFull or PitchFormat.NineVNineHalf         => new(80, 50, 12, 14, 4, 6, 9, 9.15, 2.5),
-        PitchFormat.SevenVSevenFull or PitchFormat.SevenVSevenHalf     => new(60, 40, 10, 10, 3.5, 4, 7, 7.0, 2.0),
+        PitchFormat.NineVNineFull or PitchFormat.NineVNineHalf => new(80, 50, 12, 14, 4, 6, 9, 9.15, 2.5),
+        PitchFormat.SevenVSevenFull or PitchFormat.SevenVSevenHalf => new(60, 40, 10, 10, 3.5, 4, 7, 7.0, 2.0),
         _ => new(105, 68, 16.5, 20.16, 5.5, 9.16, 11, 9.15, 3.66)
     };
 
@@ -194,12 +206,12 @@
         var ic = System.Globalization.CultureInfo.InvariantCulture;
         string F(double v) => v.ToString("F2", ic);
 
-        double yT   = Fy(0);
-        double yB   = Fy(d.WidthM);
+        double yT = Fy(0);
+        double yB = Fy(d.WidthM);
         double yMid = Fy(d.WidthM / 2);
 
         const string thick = "stroke=\"rgba(255,255,255,0.6)\" stroke-width=\"0.5\" fill=\"none\"";
-        const string thin  = "stroke=\"rgba(255,255,255,0.4)\" stroke-width=\"0.3\" fill=\"none\"";
+        const string thin = "stroke=\"rgba(255,255,255,0.4)\" stroke-width=\"0.3\" fill=\"none\"";
         const string faint = "stroke=\"rgba(255,255,255,0.35)\" stroke-width=\"0.3\" fill=\"none\"";
 
         if (_isHalfField)
@@ -207,13 +219,14 @@
             // Half-field: rotated 90° — field width (W) is horizontal, half-length (HL) is
             // vertical. Goal is at the bottom; centre line is at the top.
             double pH = _pitchHeight;
-            double W  = d.WidthM;
+            double W = d.WidthM;
             double HL = d.LengthM / 2.0;
-            double xs = 96.0 / W;                  // SVG x units per metre across field
-            double ys = (pH - 4.0) / HL;            // SVG y units per metre of depth
+            double xs = 96.0 / W; // SVG x units per metre across field
+            double ys = (pH - 4.0) / HL; // SVG y units per metre of depth
 
             // FxH: metres from left touchline → SVG x
             double FxH(double m) => 2.0 + m * xs;
+
             // FyH: metres from goal line → SVG y  (0 = goal line = bottom, HL = centre = top)
             double FyH(double depth) => (pH - 2.0) - depth * ys;
 
@@ -221,27 +234,27 @@
             sb.Append($"<rect x=\"2\" y=\"2\" width=\"96\" height=\"{F(pH - 4.0)}\" {thick}/>");
 
             // Penalty area
-            double penL   = FxH(W / 2.0 - d.PenAreaHalfWidthM);
-            double penR   = FxH(W / 2.0 + d.PenAreaHalfWidthM);
+            double penL = FxH(W / 2.0 - d.PenAreaHalfWidthM);
+            double penR = FxH(W / 2.0 + d.PenAreaHalfWidthM);
             double penTop = FyH(d.PenAreaDepthM);
-            double penBot = FyH(0.0);   // goal line = bottom edge
+            double penBot = FyH(0.0); // goal line = bottom edge
             sb.Append($"<rect x=\"{F(penL)}\" y=\"{F(penTop)}\" width=\"{F(penR - penL)}\" height=\"{F(penBot - penTop)}\" {thick}/>");
 
             // Six-yard box
-            double sixL   = FxH(W / 2.0 - d.SixYardHalfWidthM);
-            double sixR   = FxH(W / 2.0 + d.SixYardHalfWidthM);
+            double sixL = FxH(W / 2.0 - d.SixYardHalfWidthM);
+            double sixR = FxH(W / 2.0 + d.SixYardHalfWidthM);
             double sixTop = FyH(d.SixYardDepthM);
             sb.Append($"<rect x=\"{F(sixL)}\" y=\"{F(sixTop)}\" width=\"{F(sixR - sixL)}\" height=\"{F(penBot - sixTop)}\" {thick}/>");
 
             // Penalty spot
-            double spotX = 50.0;   // FxH(W/2) = 2 + 48 = 50
+            double spotX = 50.0; // FxH(W/2) = 2 + 48 = 50
             double spotY = FyH(d.PenSpotM);
             sb.Append($"<circle cx=\"{F(spotX)}\" cy=\"{F(spotY)}\" r=\"0.4\" fill=\"rgba(255,255,255,0.5)\" stroke=\"none\"/>");
 
             // Penalty arc (elliptical — x and y scales differ in this orientation)
             double arcRx = d.CircleRadiusM * xs;
             double arcRy = d.CircleRadiusM * ys;
-            double ellDy = penTop - spotY;   // negative: penTop is above spotY
+            double ellDy = penTop - spotY; // negative: penTop is above spotY
             double ellDyRy = ellDy / arcRy;
             if (ellDyRy * ellDyRy < 1.0)
             {
@@ -279,11 +292,11 @@
 
             void AddEnd(bool left)
             {
-                double xPen  = left ? Fx(d.PenAreaDepthM)              : Fx(d.LengthM - d.PenAreaDepthM);
-                double xSix  = left ? Fx(d.SixYardDepthM)              : Fx(d.LengthM - d.SixYardDepthM);
-                double xSpot = left ? Fx(d.PenSpotM)                   : Fx(d.LengthM - d.PenSpotM);
-                double xGoal = left ? 2.0                               : 98.0;
-                double xGolOuter = left ? xGoal - 2.5                  : xGoal + 2.5;
+                double xPen = left ? Fx(d.PenAreaDepthM) : Fx(d.LengthM - d.PenAreaDepthM);
+                double xSix = left ? Fx(d.SixYardDepthM) : Fx(d.LengthM - d.SixYardDepthM);
+                double xSpot = left ? Fx(d.PenSpotM) : Fx(d.LengthM - d.PenSpotM);
+                double xGoal = left ? 2.0 : 98.0;
+                double xGolOuter = left ? xGoal - 2.5 : xGoal + 2.5;
 
                 double yPenT = Fy(d.WidthM / 2 - d.PenAreaHalfWidthM);
                 double yPenB = Fy(d.WidthM / 2 + d.PenAreaHalfWidthM);
@@ -306,18 +319,18 @@
                 sb.Append($"<circle cx=\"{F(xSpot)}\" cy=\"{F(yMid)}\" r=\"0.4\" fill=\"rgba(255,255,255,0.5)\" stroke=\"none\"/>");
 
                 // Penalty arc (the arc of the 9.15 m circle that lies outside the penalty area)
-                double arcR  = (d.CircleRadiusM / d.LengthM) * 96;
+                double arcR = (d.CircleRadiusM / d.LengthM) * 96;
                 double arcDx = Math.Abs(xPen - xSpot);
                 if (arcR > arcDx)
                 {
-                    double arcDy  = Math.Sqrt(arcR * arcR - arcDx * arcDx);
-                    int    sweep  = left ? 1 : 0;
+                    double arcDy = Math.Sqrt(arcR * arcR - arcDx * arcDx);
+                    int sweep = left ? 1 : 0;
                     sb.Append($"<path d=\"M {F(xPen)} {F(yMid - arcDy)} A {F(arcR)} {F(arcR)} 0 0 {sweep} {F(xPen)} {F(yMid + arcDy)}\" {faint}/>");
                 }
 
                 // Goal (extends 2.5 units outside the pitch boundary)
-                double gx = left ? xGolOuter : xGoal;
-                double gw = 2.5;
+                var gx = left ? xGolOuter : xGoal;
+                var gw = 2.5;
                 sb.Append($"<rect x=\"{F(gx)}\" y=\"{F(yGolT)}\" width=\"{F(gw)}\" height=\"{F(yGolB - yGolT)}\" stroke=\"rgba(255,255,255,0.85)\" stroke-width=\"0.6\" fill=\"none\"/>");
 
                 // Corner arcs
@@ -347,7 +360,7 @@
 
     private string _cursor => State.ActiveTool switch
     {
-        "move"   => "move",
+        "move" => "move",
         "delete" => "crosshair",
         _ when IsPlacementTool => "crosshair",
         _ => "default"
@@ -356,16 +369,31 @@
     // Mousedown on an individual element starts drag directly — no JS hit-testing needed.
     private async Task HandleElementMouseDown(string elementRef)
     {
-        if (State.ActiveTool != "move") return;
+        Logger.LogDebug("ElementMouseDown: element={Element} tool={Tool}", elementRef, State.ActiveTool);
+        if (State.ActiveTool != "move")
+        {
+            Logger.LogDebug("ElementMouseDown: ignored — tool is not 'move'");
+            return;
+        }
         _draggingRef = elementRef;
         State.BeginDrag();
         _dotNetRef ??= DotNetObjectReference.Create(this);
-        try { await JS.InvokeVoidAsync("diagramInterop.startDrag", _dotNetRef, _svgId); }
-        catch (Exception) { }
+        Logger.LogDebug("ElementMouseDown: calling startDrag for svgId={SvgId}", _svgId);
+        try
+        {
+            await JS.InvokeVoidAsync("diagramInterop.startDrag", _dotNetRef, _svgId);
+            Logger.LogDebug("ElementMouseDown: startDrag succeeded");
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "ElementMouseDown: startDrag failed");
+        }
     }
 
     // SVG background mousedown — no element hit, nothing to do for drag.
-    private void HandleSvgMouseDown(MouseEventArgs e) { }
+    private void HandleSvgMouseDown(MouseEventArgs e)
+    {
+    }
 
     // Mouseup inside the SVG ends drag immediately.
     private void HandleSvgMouseUp(MouseEventArgs e) => _draggingRef = null;
@@ -374,6 +402,7 @@
     [JSInvokable]
     public void OnDragMove(double x, double y)
     {
+        Logger.LogDebug("OnDragMove: x={X:F1} y={Y:F1} draggingRef={Ref}", x, y, _draggingRef ?? "(null)");
         if (_draggingRef == null) return;
         State.PreviewMove(_draggingRef, x, y);
         _ = InvokeAsync(StateHasChanged);
@@ -383,6 +412,7 @@
     [JSInvokable]
     public void OnDragEnd()
     {
+        Logger.LogDebug("OnDragEnd: draggingRef={Ref}", _draggingRef ?? "(null)");
         _draggingRef = null;
         _ = InvokeAsync(StateHasChanged);
     }
@@ -401,20 +431,20 @@
                 y = coords.Y;
             }
         }
-        catch (JSException)
+        catch (Exception ex)
         {
-            // JS interop not available (test environment) — fall back to offset coordinates
+            Logger.LogError(ex, "diagram canvas error");
         }
 
         switch (State.ActiveTool)
         {
-            case "player":         await OnPlacePlayer.InvokeAsync((x, y)); break;
-            case "coach":          await OnPlaceCoach.InvokeAsync((x, y));  break;
-            case "cone":           await OnPlaceCone.InvokeAsync((x, y));   break;
-            case "goal":           await OnPlaceGoal.InvokeAsync((x, y));   break;
+            case "player": await OnPlacePlayer.InvokeAsync((x, y)); break;
+            case "coach": await OnPlaceCoach.InvokeAsync((x, y)); break;
+            case "cone": await OnPlaceCone.InvokeAsync((x, y)); break;
+            case "goal": await OnPlaceGoal.InvokeAsync((x, y)); break;
             case "arrow-run":
             case "arrow-pass":
-            case "arrow-dribble":  await OnArrowPoint.InvokeAsync((x, y));  break;
+            case "arrow-dribble": await OnArrowPoint.InvokeAsync((x, y)); break;
         }
     }
 
@@ -433,9 +463,17 @@
         {
             var coords = await JS.InvokeAsync<SvgCoords>(
                 "diagramInterop.getSvgCoordinates", _svgId, e.ClientX, e.ClientY);
-            if (coords is not null) { x = coords.X; y = coords.Y; }
+            if (coords is not null)
+            {
+                x = coords.X;
+                y = coords.Y;
+            }
         }
-        catch (Exception) { /* JS unavailable — fall back to offset coordinates */ }
+        catch (Exception ex)
+        {
+            /* JS unavailable — fall back to offset coordinates */
+            Logger.LogError(ex, "diagram canvas error");
+        }
 
         _ghostX = x;
         _ghostY = y * _pitchHeight / 100.0;
@@ -471,6 +509,7 @@
                 var cpy = (my1 + my2) / 2 + (len > 0 ? dx / len * amp : 0);
                 sb.Append($" Q {cpx.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {cpy.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {mx2.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {my2.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}");
             }
+
             return sb.ToString();
         }
 
@@ -481,10 +520,18 @@
     {
         if (_draggingRef != null)
             State.Undo();
-        try { await JS.InvokeVoidAsync("diagramInterop.cleanup", _svgId); }
-        catch (JSException) { /* ignore — component may be disposing during test teardown */ }
+        try
+        {
+            await JS.InvokeVoidAsync("diagramInterop.cleanup", _svgId);
+        }
+        catch (JSException)
+        {
+            /* ignore — component may be disposing during test teardown */
+        }
+
         _dotNetRef?.Dispose();
     }
 
     private record SvgCoords(double X, double Y);
+
 }

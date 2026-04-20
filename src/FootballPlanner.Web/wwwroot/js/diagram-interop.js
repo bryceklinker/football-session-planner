@@ -3,6 +3,7 @@
 // All other diagram logic lives in C#.
 
 window.diagramInterop = (function () {
+    console.log('[diagramInterop] loaded');
     let _listeners = new Map(); // svgId -> { move, up }
 
     function getSvgCoordinates(svgId, clientX, clientY) {
@@ -39,19 +40,28 @@ window.diagramInterop = (function () {
     // Registers window mousemove and mouseup listeners so drag tracks the cursor
     // anywhere on the page, not just over the SVG.
     function startDrag(dotNetRef, svgId) {
+        console.log('[diagramInterop] startDrag called for svgId=' + svgId);
         cleanup(svgId);
         const svg = document.getElementById(svgId);
+        if (!svg) {
+            console.warn('[diagramInterop] startDrag: SVG element not found for id=' + svgId);
+        }
         const onMove = function (ev) {
             const c = _svgCoords(svg, ev.clientX, ev.clientY);
-            dotNetRef.invokeMethodAsync('OnDragMove', c.x, c.y);
+            console.debug('[diagramInterop] mousemove: x=' + c.x.toFixed(1) + ' y=' + c.y.toFixed(1));
+            dotNetRef.invokeMethodAsync('OnDragMove', c.x, c.y)
+                .catch(function(err) { console.error('[diagramInterop] OnDragMove failed:', err); });
         };
         const onUp = function () {
-            dotNetRef.invokeMethodAsync('OnDragEnd');
+            console.log('[diagramInterop] mouseup: ending drag');
+            dotNetRef.invokeMethodAsync('OnDragEnd')
+                .catch(function(err) { console.error('[diagramInterop] OnDragEnd failed:', err); });
             cleanup(svgId);
         };
         window.addEventListener('mousemove', onMove);
         window.addEventListener('mouseup', onUp);
         _listeners.set(svgId, { move: onMove, up: onUp });
+        console.log('[diagramInterop] startDrag: listeners registered');
     }
 
     function cleanup(svgId) {

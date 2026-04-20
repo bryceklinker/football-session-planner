@@ -117,14 +117,14 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
         state.PlaceCone(10.0, 20.0);
 
         JSInterop.Mode = JSRuntimeMode.Strict;
-        JSInterop.SetupVoid("diagramInterop.startDrag", _ => true);
+        JSInterop.SetupVoid("diagramInterop.attachDrag", _ => true);
         JSInterop.SetupVoid("diagramInterop.cleanup", _ => true);
 
         var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
 
-        // Mousedown directly on the cone element starts drag
-        cut.Find("polygon[data-element^='cones']").MouseDown();
-        // Simulate JS window mousemove calling back into Blazor
+        // JS calls OnElementMouseDown when mousedown fires on [data-element]
+        cut.Instance.OnElementMouseDown("cones/0");
+        // JS calls OnDragMove as mouse moves
         cut.Instance.OnDragMove(50.0, 60.0);
 
         Assert.Equal(50.0, state.Diagram.Cones[0].X);
@@ -140,8 +140,8 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
 
         var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
 
-        // HandleElementMouseDown returns early because ActiveTool != "move"
-        cut.Find("polygon[data-element^='cones']").MouseDown();
+        // OnElementMouseDown returns early when tool != "move"
+        cut.Instance.OnElementMouseDown("cones/0");
         // OnDragMove: _draggingRef is null — no PreviewMove called
         cut.Instance.OnDragMove(50.0, 60.0);
 
@@ -157,12 +157,12 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
         state.PlaceCone(10.0, 20.0);
 
         JSInterop.Mode = JSRuntimeMode.Strict;
-        JSInterop.SetupVoid("diagramInterop.startDrag", _ => true);
+        JSInterop.SetupVoid("diagramInterop.attachDrag", _ => true);
         JSInterop.SetupVoid("diagramInterop.cleanup", _ => true);
 
         var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
 
-        cut.Find("polygon[data-element^='cones']").MouseDown();
+        cut.Instance.OnElementMouseDown("cones/0");
         cut.Instance.OnDragMove(50.0, 60.0);
         // JS window mouseup fires OnDragEnd, clearing _draggingRef
         cut.Instance.OnDragEnd();

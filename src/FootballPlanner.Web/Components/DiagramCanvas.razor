@@ -6,11 +6,8 @@
 
 <svg id="@_svgId"
      viewBox="0 0 100 @_pitchHeight.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
-     style="width:100%;display:block;background:#2d5a27;cursor:@_cursor;overflow:visible;"
+     style="width:100%;display:block;background:#2d5a27;cursor:@_cursor;overflow:visible;user-select:none;"
      @onclick="HandleSvgClick"
-     @onmousedown="HandleSvgMouseDown"
-     @onmousedown:preventDefault="true"
-     @onmouseup="HandleSvgMouseUp"
      @onmousemove="HandleMouseMove">
 
     <defs>
@@ -38,9 +35,6 @@
               width="@goal.Width" height="@(goal.Width / 7.0)"
               fill="none" stroke="white" stroke-width="0.8"
               style="cursor:pointer;"
-              @onmousedown="() => HandleElementMouseDown(gref)"
-              @onmousedown:stopPropagation="true"
-              @onmousedown:preventDefault="true"
               @onclick:stopPropagation="true"
               @onclick="() => HandleElementClick(gref)"/>
     }
@@ -54,9 +48,6 @@
                  points="@cone.X,@(cone.Y * _pitchHeight / 100 - 2) @(cone.X - 1.5),@(cone.Y * _pitchHeight / 100 + 1) @(cone.X + 1.5),@(cone.Y * _pitchHeight / 100 + 1)"
                  fill="#f0a500"
                  style="cursor:pointer;"
-                 @onmousedown="() => HandleElementMouseDown(cref)"
-                 @onmousedown:stopPropagation="true"
-                 @onmousedown:preventDefault="true"
                  @onclick:stopPropagation="true"
                  @onclick="() => HandleElementClick(cref)"/>
     }
@@ -70,9 +61,6 @@
                 cx="@coach.X" cy="@(coach.Y * _pitchHeight / 100)"
                 r="2" fill="#f0a500" stroke="white" stroke-width="0.4"
                 style="cursor:pointer;"
-                @onmousedown="() => HandleElementMouseDown(kref)"
-                @onmousedown:stopPropagation="true"
-                @onmousedown:preventDefault="true"
                 @onclick:stopPropagation="true"
                 @onclick="() => HandleElementClick(kref)"/>
         @((MarkupString)$"<text x=\"{coach.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" y=\"{(coach.Y * _pitchHeight / 100).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"white\" font-size=\"1.8\" font-weight=\"bold\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(coach.Label)}</text>")
@@ -90,9 +78,6 @@
                     cx="@player.X" cy="@(player.Y * _pitchHeight / 100)"
                     r="2" fill="@team.Color" stroke="white" stroke-width="0.4"
                     style="cursor:pointer;"
-                    @onmousedown="() => HandleElementMouseDown(pref)"
-                    @onmousedown:stopPropagation="true"
-                    @onmousedown:preventDefault="true"
                     @onclick:stopPropagation="true"
                     @onclick="() => HandleElementClick(pref)"/>
             @if (!string.IsNullOrEmpty(player.Label))
@@ -121,9 +106,6 @@
               fill="none"
               marker-end="url(#@markerId)"
               style="cursor:pointer;"
-              @onmousedown="() => HandleElementMouseDown(aref)"
-              @onmousedown:stopPropagation="true"
-              @onmousedown:preventDefault="true"
               @onclick:stopPropagation="true"
               @onclick="() => HandleElementClick(aref)"/>
     }
@@ -152,6 +134,20 @@
     private double _ghostY = -1;
     private string? _draggingRef;
     private DotNetObjectReference<DiagramCanvas>? _dotNetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        _dotNetRef ??= DotNetObjectReference.Create(this);
+        try
+        {
+            await JS.InvokeVoidAsync("diagramInterop.attachDrag", _dotNetRef, _svgId);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "attachDrag failed");
+        }
+    }
 
     private double _pitchHeight => State.Diagram.PitchFormat switch
     {
@@ -366,53 +362,32 @@
         _ => "default"
     };
 
-    // Mousedown on an individual element starts drag directly — no JS hit-testing needed.
-    private async Task HandleElementMouseDown(string elementRef)
+    // Called by JS when mousedown fires on a [data-element] child of the SVG.
+    // Registered via diagramInterop.attachDrag() in OnAfterRenderAsync.
+    [JSInvokable]
+    public void OnElementMouseDown(string elementRef)
     {
-        Logger.LogDebug("ElementMouseDown: element={Element} tool={Tool}", elementRef, State.ActiveTool);
-        if (State.ActiveTool != "move")
-        {
-            Logger.LogDebug("ElementMouseDown: ignored — tool is not 'move'");
-            return;
-        }
+        Console.WriteLine($"[DiagramCanvas] OnElementMouseDown: element={elementRef} tool={State.ActiveTool}");
+        if (State.ActiveTool != "move") return;
         _draggingRef = elementRef;
         State.BeginDrag();
-        _dotNetRef ??= DotNetObjectReference.Create(this);
-        Logger.LogDebug("ElementMouseDown: calling startDrag for svgId={SvgId}", _svgId);
-        try
-        {
-            await JS.InvokeVoidAsync("diagramInterop.startDrag", _dotNetRef, _svgId);
-            Logger.LogDebug("ElementMouseDown: startDrag succeeded");
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "ElementMouseDown: startDrag failed");
-        }
+        Console.WriteLine($"[DiagramCanvas] drag started: draggingRef={_draggingRef}");
     }
 
-    // SVG background mousedown — no element hit, nothing to do for drag.
-    private void HandleSvgMouseDown(MouseEventArgs e)
-    {
-    }
-
-    // Mouseup inside the SVG ends drag immediately.
-    private void HandleSvgMouseUp(MouseEventArgs e) => _draggingRef = null;
-
-    // Called by JS window mousemove during drag — updates element position in real time.
+    // Called by JS window.mousemove during drag — updates element position in real time.
     [JSInvokable]
     public void OnDragMove(double x, double y)
     {
-        Logger.LogDebug("OnDragMove: x={X:F1} y={Y:F1} draggingRef={Ref}", x, y, _draggingRef ?? "(null)");
         if (_draggingRef == null) return;
         State.PreviewMove(_draggingRef, x, y);
         _ = InvokeAsync(StateHasChanged);
     }
 
-    // Called by JS when mouseup fires (window mouseup listener, fires anywhere on page).
+    // Called by JS window.mouseup — ends the drag.
     [JSInvokable]
     public void OnDragEnd()
     {
-        Logger.LogDebug("OnDragEnd: draggingRef={Ref}", _draggingRef ?? "(null)");
+        Console.WriteLine($"[DiagramCanvas] OnDragEnd: draggingRef={_draggingRef ?? "(null)"}");
         _draggingRef = null;
         _ = InvokeAsync(StateHasChanged);
     }

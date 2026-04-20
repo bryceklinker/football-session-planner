@@ -1,7 +1,8 @@
 // diagram-interop.js
 // Handles all mouse tracking for the SVG pitch diagram.
-// attachDrag() is called once on first render and handles mousedown detection
-// on [data-element] children, plus window-level mousemove/mouseup for drag tracking.
+// attachDrag() is called once on first render. During drag, the element is moved
+// visually via an SVG transform (no Blazor re-renders). On mouseup, the final
+// position is sent to C# once, which updates the model and triggers one re-render.
 
 window.diagramInterop = (function () {
     console.log('[diagramInterop] loaded');
@@ -21,8 +22,6 @@ window.diagramInterop = (function () {
         return { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) };
     }
 
-    // Returns the data-element ref of the topmost draggable SVG element at the given
-    // client coordinates, or null if no draggable element is there.
     function getElementRefAt(svgId, clientX, clientY) {
         const el = document.elementFromPoint(clientX, clientY);
         if (!el) return null;
@@ -36,9 +35,9 @@ window.diagramInterop = (function () {
     }
 
     // Attaches a mousedown listener to the SVG and window-level mousemove/mouseup.
-    // Called once from DiagramCanvas.OnAfterRenderAsync. The SVG DOM element is
-    // reused across Blazor re-renders so the listener persists for the lifetime
-    // of the component.
+    // During drag, the element is translated via an SVG transform attribute for
+    // smooth visual feedback without Blazor re-renders.
+    // On mouseup, OnDragEnd(finalX, finalY) is called once to update the model.
     function attachDrag(dotNetRef, svgId) {
         console.log('[diagramInterop] attachDrag called for svgId=' + svgId);
         cleanup(svgId);
@@ -49,38 +48,64 @@ window.diagramInterop = (function () {
             return;
         }
 
-        let activeElement = null;
+        let activeElement = null;  // element ref string ("cones/0", etc.)
+        let activeSvgEl = null;    // the actual dragged SVG DOM element
+        let startX = 0, startY = 0; // drag-start position in SVG % coords
+        let lastX = 0, lastY = 0;   // most recent cursor position in SVG % coords
 
         const onMouseDown = function(ev) {
-            // Walk up from the event target to find a [data-element] ancestor inside the SVG.
+            // Walk up from event target to find the nearest [data-element] ancestor.
             let el = ev.target;
+            let svgEl = null;
             let elementRef = null;
             while (el && el !== svg) {
                 const ref = el.getAttribute('data-element');
-                if (ref) { elementRef = ref; break; }
+                if (ref) { elementRef = ref; svgEl = el; break; }
                 el = el.parentElement;
             }
             if (!elementRef) return;
 
-            console.log('[diagramInterop] element mousedown: ref=' + elementRef);
+            const c = _svgCoords(svg, ev.clientX, ev.clientY);
+            console.log('[diagramInterop] element mousedown: ref=' + elementRef +
+                        ' x=' + c.x.toFixed(1) + ' y=' + c.y.toFixed(1));
+
             activeElement = elementRef;
+            activeSvgEl = svgEl;
+            startX = c.x;
+            startY = c.y;
+            lastX = c.x;
+            lastY = c.y;
+
             dotNetRef.invokeMethodAsync('OnElementMouseDown', elementRef)
                 .catch(function(err) { console.error('[diagramInterop] OnElementMouseDown failed:', err); });
         };
 
         const onMove = function(ev) {
-            if (!activeElement) return;
+            if (!activeElement || !activeSvgEl) return;
             const c = _svgCoords(svg, ev.clientX, ev.clientY);
-            console.debug('[diagramInterop] mousemove: x=' + c.x.toFixed(1) + ' y=' + c.y.toFixed(1));
-            dotNetRef.invokeMethodAsync('OnDragMove', c.x, c.y)
-                .catch(function(err) { console.error('[diagramInterop] OnDragMove failed:', err); });
+            lastX = c.x;
+            lastY = c.y;
+
+            // Translate element in viewBox units for immediate visual feedback.
+            // SVG viewBox x range = 0..100 (same as % coords), y range = 0..pitchHeight.
+            const vb = svg.viewBox.baseVal;
+            const dx = c.x - startX;
+            const dy = (c.y - startY) * vb.height / 100;
+            activeSvgEl.setAttribute('transform', 'translate(' + dx + ',' + dy + ')');
         };
 
         const onUp = function() {
             if (!activeElement) return;
-            console.log('[diagramInterop] mouseup: ending drag, ref=' + activeElement);
+            const ref = activeElement;
+            const fx = lastX;
+            const fy = lastY;
+            console.log('[diagramInterop] mouseup: ref=' + ref +
+                        ' finalX=' + fx.toFixed(1) + ' finalY=' + fy.toFixed(1));
+
             activeElement = null;
-            dotNetRef.invokeMethodAsync('OnDragEnd')
+            activeSvgEl = null; // Blazor re-render will replace the element without transform
+
+            dotNetRef.invokeMethodAsync('OnDragEnd', fx, fy)
                 .catch(function(err) { console.error('[diagramInterop] OnDragEnd failed:', err); });
         };
 

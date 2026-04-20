@@ -2,7 +2,6 @@ using Bunit;
 using FootballPlanner.Web.Components;
 using FootballPlanner.Web.Models;
 using MudBlazor.Services;
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FootballPlanner.Component.Tests.Components;
@@ -110,7 +109,7 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public async Task Drag_WhenMouseMoves_UpdatesConePosition()
+    public async Task Drag_WhenMouseReleased_UpdatesConePosition()
     {
         var state = DefaultState();
         state.SetTool("move");
@@ -124,8 +123,8 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
 
         // JS calls OnElementMouseDown when mousedown fires on [data-element]
         cut.Instance.OnElementMouseDown("cones/0");
-        // JS calls OnDragMove as mouse moves
-        await cut.Instance.OnDragMove(50.0, 60.0);
+        // JS calls OnDragEnd with final position on mouseup
+        await cut.Instance.OnDragEnd(50.0, 60.0);
 
         Assert.Equal(50.0, state.Diagram.Cones[0].X);
         Assert.Equal(60.0, state.Diagram.Cones[0].Y);
@@ -140,17 +139,17 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
 
         var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
 
-        // OnElementMouseDown returns early when tool != "move"
+        // OnElementMouseDown returns early when tool != "move", _draggingRef stays null
         cut.Instance.OnElementMouseDown("cones/0");
-        // OnDragMove: _draggingRef is null — no PreviewMove called
-        await cut.Instance.OnDragMove(50.0, 60.0);
+        // OnDragEnd: _draggingRef is null — PreviewMove not called
+        await cut.Instance.OnDragEnd(50.0, 60.0);
 
         Assert.Equal(10.0, state.Diagram.Cones[0].X);
         Assert.Equal(20.0, state.Diagram.Cones[0].Y);
     }
 
     [Fact]
-    public async Task Drag_WhenMouseReleased_EndsDrag()
+    public async Task Drag_SecondDragAfterFirstEnds_DoesNotUpdatePosition()
     {
         var state = DefaultState();
         state.SetTool("move");
@@ -163,12 +162,10 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
         var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
 
         cut.Instance.OnElementMouseDown("cones/0");
-        await cut.Instance.OnDragMove(50.0, 60.0);
-        // JS window mouseup fires OnDragEnd, clearing _draggingRef
-        await cut.Instance.OnDragEnd();
+        await cut.Instance.OnDragEnd(50.0, 60.0);
 
-        // Further OnDragMove should not update position
-        await cut.Instance.OnDragMove(90.0, 90.0);
+        // After drag end, _draggingRef is null — a second OnDragEnd should be no-op
+        await cut.Instance.OnDragEnd(90.0, 90.0);
 
         Assert.Equal(50.0, state.Diagram.Cones[0].X);
         Assert.Equal(60.0, state.Diagram.Cones[0].Y);

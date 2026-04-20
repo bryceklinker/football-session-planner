@@ -7,8 +7,8 @@ public class ApiClient(HttpClient http)
     public Task<List<PhaseDto>?> GetPhasesAsync() =>
         http.GetFromJsonAsync<List<PhaseDto>>("phases");
 
-    public Task<HttpResponseMessage> CreatePhaseAsync(CreatePhaseRequest request) =>
-        http.PostAsJsonAsync("phases", request);
+    public Task<PhaseDto?> CreatePhaseAsync(CreatePhaseRequest request) =>
+        http.PostAsJsonAsync("phases", request).ContinueWith(t => t.Result.Content.ReadFromJsonAsync<PhaseDto>()).Unwrap();
 
     public Task<HttpResponseMessage> UpdatePhaseAsync(int id, UpdatePhaseRequest request) =>
         http.PutAsJsonAsync($"phases/{id}", request);
@@ -19,8 +19,8 @@ public class ApiClient(HttpClient http)
     public Task<List<FocusDto>?> GetFocusesAsync() =>
         http.GetFromJsonAsync<List<FocusDto>>("focuses");
 
-    public Task<HttpResponseMessage> CreateFocusAsync(CreateFocusRequest request) =>
-        http.PostAsJsonAsync("focuses", request);
+    public Task<FocusDto?> CreateFocusAsync(CreateFocusRequest request) =>
+        http.PostAsJsonAsync("focuses", request).ContinueWith(t => t.Result.Content.ReadFromJsonAsync<FocusDto>()).Unwrap();
 
     public Task<HttpResponseMessage> UpdateFocusAsync(int id, UpdateFocusRequest request) =>
         http.PutAsJsonAsync($"focuses/{id}", request);

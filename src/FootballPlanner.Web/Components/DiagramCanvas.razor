@@ -374,20 +374,14 @@
         Console.WriteLine($"[DiagramCanvas] drag started: draggingRef={_draggingRef}");
     }
 
-    // Called by JS window.mousemove during drag — updates element position in real time.
+    // Called by JS window.mouseup with the final cursor position.
+    // JS owns the visual during drag (SVG transform); this does one model update + re-render.
     [JSInvokable]
-    public Task OnDragMove(double x, double y)
+    public Task OnDragEnd(double x, double y)
     {
-        if (_draggingRef == null) return Task.CompletedTask;
-        State.PreviewMove(_draggingRef, x, y);
-        return InvokeAsync(StateHasChanged);
-    }
-
-    // Called by JS window.mouseup — ends the drag.
-    [JSInvokable]
-    public Task OnDragEnd()
-    {
-        Console.WriteLine($"[DiagramCanvas] OnDragEnd: draggingRef={_draggingRef ?? "(null)"}");
+        Console.WriteLine($"[DiagramCanvas] OnDragEnd: ref={_draggingRef ?? "(null)"} x={x:F1} y={y:F1}");
+        if (_draggingRef != null)
+            State.PreviewMove(_draggingRef, x, y);
         _draggingRef = null;
         return InvokeAsync(StateHasChanged);
     }

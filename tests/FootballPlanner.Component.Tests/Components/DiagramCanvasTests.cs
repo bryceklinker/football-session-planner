@@ -110,7 +110,7 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public void Drag_WhenMouseMoves_UpdatesConePosition()
+    public async Task Drag_WhenMouseMoves_UpdatesConePosition()
     {
         var state = DefaultState();
         state.SetTool("move");
@@ -125,14 +125,14 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
         // JS calls OnElementMouseDown when mousedown fires on [data-element]
         cut.Instance.OnElementMouseDown("cones/0");
         // JS calls OnDragMove as mouse moves
-        cut.Instance.OnDragMove(50.0, 60.0);
+        await cut.Instance.OnDragMove(50.0, 60.0);
 
         Assert.Equal(50.0, state.Diagram.Cones[0].X);
         Assert.Equal(60.0, state.Diagram.Cones[0].Y);
     }
 
     [Fact]
-    public void Drag_WithNonMoveTool_DoesNotUpdatePosition()
+    public async Task Drag_WithNonMoveTool_DoesNotUpdatePosition()
     {
         var state = DefaultState();
         state.SetTool("player"); // not "move"
@@ -143,14 +143,14 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
         // OnElementMouseDown returns early when tool != "move"
         cut.Instance.OnElementMouseDown("cones/0");
         // OnDragMove: _draggingRef is null — no PreviewMove called
-        cut.Instance.OnDragMove(50.0, 60.0);
+        await cut.Instance.OnDragMove(50.0, 60.0);
 
         Assert.Equal(10.0, state.Diagram.Cones[0].X);
         Assert.Equal(20.0, state.Diagram.Cones[0].Y);
     }
 
     [Fact]
-    public void Drag_WhenMouseReleased_EndsDrag()
+    public async Task Drag_WhenMouseReleased_EndsDrag()
     {
         var state = DefaultState();
         state.SetTool("move");
@@ -163,12 +163,12 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
         var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
 
         cut.Instance.OnElementMouseDown("cones/0");
-        cut.Instance.OnDragMove(50.0, 60.0);
+        await cut.Instance.OnDragMove(50.0, 60.0);
         // JS window mouseup fires OnDragEnd, clearing _draggingRef
-        cut.Instance.OnDragEnd();
+        await cut.Instance.OnDragEnd();
 
         // Further OnDragMove should not update position
-        cut.Instance.OnDragMove(90.0, 90.0);
+        await cut.Instance.OnDragMove(90.0, 90.0);
 
         Assert.Equal(50.0, state.Diagram.Cones[0].X);
         Assert.Equal(60.0, state.Diagram.Cones[0].Y);

@@ -376,20 +376,20 @@
 
     // Called by JS window.mousemove during drag — updates element position in real time.
     [JSInvokable]
-    public void OnDragMove(double x, double y)
+    public Task OnDragMove(double x, double y)
     {
-        if (_draggingRef == null) return;
+        if (_draggingRef == null) return Task.CompletedTask;
         State.PreviewMove(_draggingRef, x, y);
-        _ = InvokeAsync(StateHasChanged);
+        return InvokeAsync(StateHasChanged);
     }
 
     // Called by JS window.mouseup — ends the drag.
     [JSInvokable]
-    public void OnDragEnd()
+    public Task OnDragEnd()
     {
         Console.WriteLine($"[DiagramCanvas] OnDragEnd: draggingRef={_draggingRef ?? "(null)"}");
         _draggingRef = null;
-        _ = InvokeAsync(StateHasChanged);
+        return InvokeAsync(StateHasChanged);
     }
 
     private async Task HandleSvgClick(MouseEventArgs e)

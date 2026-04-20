@@ -1,6 +1,8 @@
 @page "/phases"
+@page "/phases/{Id:int}"
 @attribute [Authorize]
 @inject Services.ApiClient Api
+@inject NavigationManager Nav
 
 <MudText Typo="Typo.h4" Class="mb-4">Phases</MudText>
 
@@ -21,8 +23,8 @@
                 <MudList T="object" Dense="true">
                     @foreach (var phase in _phases.OrderBy(p => p.Order))
                     {
-                        <MudListItem T="object" OnClick="() => SelectPhase(phase)"
-                                     Class="@(_selectedId == phase.Id ? "mud-selected-item" : "")">
+                        <MudListItem T="object" OnClick="() => SelectPhase(phase.Id)"
+                                     Class="@(Id == phase.Id ? "mud-selected-item" : "")">
                             @phase.Order. @phase.Name
                         </MudListItem>
                     }
@@ -57,6 +59,8 @@
 </MudGrid>
 
 @code {
+    [Parameter] public int? Id { get; set; }
+
     private List<Services.ApiClient.PhaseDto>? _phases;
     private int? _selectedId;
     private bool _isCreating;
@@ -66,6 +70,34 @@
     protected override async Task OnInitializedAsync()
     {
         _phases = await Api.GetPhasesAsync();
+        ApplyRouteParameter();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_phases != null)
+            ApplyRouteParameter();
+    }
+
+    private void SelectPhase(int id) => Nav.NavigateTo($"/phases/{id}");
+
+    private void ApplyRouteParameter()
+    {
+        if (Id != null)
+        {
+            var phase = _phases?.FirstOrDefault(p => p.Id == Id);
+            if (phase != null)
+            {
+                _isCreating = false;
+                _selectedId = phase.Id;
+                _editName = phase.Name;
+                _editOrder = phase.Order;
+            }
+        }
+        else if (!_isCreating)
+        {
+            _selectedId = null;
+        }
     }
 
     private void CreateNew()
@@ -76,28 +108,25 @@
         _editOrder = (_phases?.Count ?? 0) + 1;
     }
 
-    private void SelectPhase(Services.ApiClient.PhaseDto phase)
-    {
-        _isCreating = false;
-        _selectedId = phase.Id;
-        _editName = phase.Name;
-        _editOrder = phase.Order;
-    }
-
     private async Task Save()
     {
         if (string.IsNullOrWhiteSpace(_editName)) return;
         if (_isCreating)
         {
-            await Api.CreatePhaseAsync(new Services.ApiClient.CreatePhaseRequest(_editName, _editOrder));
+            var created = await Api.CreatePhaseAsync(new Services.ApiClient.CreatePhaseRequest(_editName, _editOrder));
+            _phases = await Api.GetPhasesAsync();
+            if (created != null)
+                Nav.NavigateTo($"/phases/{created.Id}");
+            else
+                Nav.NavigateTo("/phases");
         }
         else if (_selectedId != null)
         {
             await Api.UpdatePhaseAsync(_selectedId.Value,
                 new Services.ApiClient.UpdatePhaseRequest(_editName, _editOrder));
+            _phases = await Api.GetPhasesAsync();
+            ApplyRouteParameter();
         }
-        _phases = await Api.GetPhasesAsync();
-        Cancel();
     }
 
     private async Task Delete()
@@ -105,14 +134,12 @@
         if (_selectedId == null) return;
         await Api.DeletePhaseAsync(_selectedId.Value);
         _phases = await Api.GetPhasesAsync();
-        Cancel();
+        Nav.NavigateTo("/phases");
     }
 
     private void Cancel()
     {
-        _selectedId = null;
         _isCreating = false;
-        _editName = string.Empty;
-        _editOrder = 1;
+        Nav.NavigateTo(Id.HasValue ? $"/phases/{Id}" : "/phases");
     }
 }

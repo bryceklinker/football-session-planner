@@ -1,9 +1,11 @@
 @page "/activities"
+@page "/activities/{Id:int}"
 @attribute [Authorize]
 @using FootballPlanner.Web.Components
 @inject Services.ApiClient Api
 @inject IJSRuntime JS
 @inject IDialogService DialogService
+@inject NavigationManager Nav
 
 <MudText Typo="Typo.h4" Class="mb-4">Activity Library</MudText>
 
@@ -27,8 +29,8 @@
                 <MudList T="object" Dense="true">
                     @foreach (var activity in FilteredActivities)
                     {
-                        <MudListItem T="object" OnClick="() => SelectActivity(activity)"
-                                     Class="@(_selectedId == activity.Id ? "mud-selected-item" : "")">
+                        <MudListItem T="object" OnClick="() => SelectActivity(activity.Id)"
+                                     Class="@(Id == activity.Id ? "mud-selected-item" : "")">
                             <div>
                                 <MudText Typo="Typo.body2">@activity.Name</MudText>
                                 <MudText Typo="Typo.caption" Color="Color.Secondary">@activity.EstimatedDuration min</MudText>
@@ -91,6 +93,8 @@
 </MudGrid>
 
 @code {
+    [Parameter] public int? Id { get; set; }
+
     private List<Services.ApiClient.ActivityDto>? _activities;
     private int? _selectedId;
     private bool _isCreating;
@@ -109,6 +113,37 @@
     protected override async Task OnInitializedAsync()
     {
         _activities = await Api.GetActivitiesAsync();
+        ApplyRouteParameter();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_activities != null)
+            ApplyRouteParameter();
+    }
+
+    private void SelectActivity(int id) => Nav.NavigateTo($"/activities/{id}");
+
+    private void ApplyRouteParameter()
+    {
+        if (Id != null)
+        {
+            var activity = _activities?.FirstOrDefault(a => a.Id == Id);
+            if (activity != null)
+            {
+                _isCreating = false;
+                _selectedId = activity.Id;
+                _editName = activity.Name;
+                _editDescription = activity.Description;
+                _editInspirationUrl = activity.InspirationUrl ?? string.Empty;
+                _editDuration = activity.EstimatedDuration;
+                _currentDiagramJson = activity.DiagramJson;
+            }
+        }
+        else if (!_isCreating)
+        {
+            _selectedId = null;
+        }
     }
 
     private void CreateNew()
@@ -122,33 +157,27 @@
         _currentDiagramJson = null;
     }
 
-    private void SelectActivity(Services.ApiClient.ActivityDto activity)
-    {
-        _isCreating = false;
-        _selectedId = activity.Id;
-        _editName = activity.Name;
-        _editDescription = activity.Description;
-        _editInspirationUrl = activity.InspirationUrl ?? string.Empty;
-        _editDuration = activity.EstimatedDuration;
-        _currentDiagramJson = activity.DiagramJson;
-    }
-
     private async Task Save()
     {
         if (string.IsNullOrWhiteSpace(_editName)) return;
         var url = string.IsNullOrWhiteSpace(_editInspirationUrl) ? null : _editInspirationUrl;
         if (_isCreating)
         {
-            await Api.CreateActivityAsync(new Services.ApiClient.CreateActivityRequest(
+            var created = await Api.CreateActivityAsync(new Services.ApiClient.CreateActivityRequest(
                 _editName, _editDescription, url, _editDuration));
+            _activities = await Api.GetActivitiesAsync();
+            if (created != null)
+                Nav.NavigateTo($"/activities/{created.Id}");
+            else
+                Nav.NavigateTo("/activities");
         }
         else if (_selectedId != null)
         {
             await Api.UpdateActivityAsync(_selectedId.Value,
                 new Services.ApiClient.UpdateActivityRequest(_editName, _editDescription, url, _editDuration));
+            _activities = await Api.GetActivitiesAsync();
+            ApplyRouteParameter();
         }
-        _activities = await Api.GetActivitiesAsync();
-        Cancel();
     }
 
     private async Task Delete()
@@ -156,18 +185,13 @@
         if (_selectedId == null) return;
         await Api.DeleteActivityAsync(_selectedId.Value);
         _activities = await Api.GetActivitiesAsync();
-        Cancel();
+        Nav.NavigateTo("/activities");
     }
 
     private void Cancel()
     {
-        _selectedId = null;
         _isCreating = false;
-        _editName = string.Empty;
-        _editDescription = string.Empty;
-        _editInspirationUrl = string.Empty;
-        _editDuration = 30;
-        _currentDiagramJson = null;
+        Nav.NavigateTo(Id.HasValue ? $"/activities/{Id}" : "/activities");
     }
 
     private async Task OpenDiagramEditor()

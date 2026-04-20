@@ -1,6 +1,8 @@
 @page "/focuses"
+@page "/focuses/{Id:int}"
 @attribute [Authorize]
 @inject Services.ApiClient Api
+@inject NavigationManager Nav
 
 <MudText Typo="Typo.h4" Class="mb-4">Focuses</MudText>
 
@@ -21,8 +23,8 @@
                 <MudList T="object" Dense="true">
                     @foreach (var focus in _focuses)
                     {
-                        <MudListItem T="object" OnClick="() => SelectFocus(focus)"
-                                     Class="@(_selectedId == focus.Id ? "mud-selected-item" : "")">
+                        <MudListItem T="object" OnClick="() => SelectFocus(focus.Id)"
+                                     Class="@(Id == focus.Id ? "mud-selected-item" : "")">
                             @focus.Name
                         </MudListItem>
                     }
@@ -56,6 +58,8 @@
 </MudGrid>
 
 @code {
+    [Parameter] public int? Id { get; set; }
+
     private List<Services.ApiClient.FocusDto>? _focuses;
     private int? _selectedId;
     private bool _isCreating;
@@ -64,6 +68,33 @@
     protected override async Task OnInitializedAsync()
     {
         _focuses = await Api.GetFocusesAsync();
+        ApplyRouteParameter();
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (_focuses != null)
+            ApplyRouteParameter();
+    }
+
+    private void SelectFocus(int id) => Nav.NavigateTo($"/focuses/{id}");
+
+    private void ApplyRouteParameter()
+    {
+        if (Id != null)
+        {
+            var focus = _focuses?.FirstOrDefault(f => f.Id == Id);
+            if (focus != null)
+            {
+                _isCreating = false;
+                _selectedId = focus.Id;
+                _editName = focus.Name;
+            }
+        }
+        else if (!_isCreating)
+        {
+            _selectedId = null;
+        }
     }
 
     private void CreateNew()
@@ -73,27 +104,25 @@
         _editName = string.Empty;
     }
 
-    private void SelectFocus(Services.ApiClient.FocusDto focus)
-    {
-        _isCreating = false;
-        _selectedId = focus.Id;
-        _editName = focus.Name;
-    }
-
     private async Task Save()
     {
         if (string.IsNullOrWhiteSpace(_editName)) return;
         if (_isCreating)
         {
-            await Api.CreateFocusAsync(new Services.ApiClient.CreateFocusRequest(_editName));
+            var created = await Api.CreateFocusAsync(new Services.ApiClient.CreateFocusRequest(_editName));
+            _focuses = await Api.GetFocusesAsync();
+            if (created != null)
+                Nav.NavigateTo($"/focuses/{created.Id}");
+            else
+                Nav.NavigateTo("/focuses");
         }
         else if (_selectedId != null)
         {
             await Api.UpdateFocusAsync(_selectedId.Value,
                 new Services.ApiClient.UpdateFocusRequest(_editName));
+            _focuses = await Api.GetFocusesAsync();
+            ApplyRouteParameter();
         }
-        _focuses = await Api.GetFocusesAsync();
-        Cancel();
     }
 
     private async Task Delete()
@@ -101,13 +130,12 @@
         if (_selectedId == null) return;
         await Api.DeleteFocusAsync(_selectedId.Value);
         _focuses = await Api.GetFocusesAsync();
-        Cancel();
+        Nav.NavigateTo("/focuses");
     }
 
     private void Cancel()
     {
-        _selectedId = null;
         _isCreating = false;
-        _editName = string.Empty;
+        Nav.NavigateTo(Id.HasValue ? $"/focuses/{Id}" : "/focuses");
     }
 }

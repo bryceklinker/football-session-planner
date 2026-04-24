@@ -36,7 +36,6 @@ public class DiagramToolbarTests : BunitContext, IAsyncLifetime
     [InlineData("Run arrow",      "arrow-run")]
     [InlineData("Pass arrow",     "arrow-pass")]
     [InlineData("Dribble arrow",  "arrow-dribble")]
-    [InlineData("Move element",   "move")]
     [InlineData("Delete element", "delete")]
     public void ClickToolButton_SetsActiveToolAndFiresOnChanged(string ariaLabel, string expectedTool)
     {

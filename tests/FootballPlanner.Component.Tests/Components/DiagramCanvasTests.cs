@@ -1,6 +1,7 @@
 using Bunit;
 using FootballPlanner.Web.Components;
 using FootballPlanner.Web.Models;
+using Microsoft.AspNetCore.Components.Web;
 using MudBlazor.Services;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -109,65 +110,65 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
-    public async Task Drag_WhenMouseReleased_UpdatesConePosition()
+    public void Drag_WhenNoToolActive_UpdatesConePosition()
     {
         var state = DefaultState();
-        state.SetTool("move");
+        // No tool active — drag is the default behaviour.
         state.PlaceCone(10.0, 20.0);
-
-        JSInterop.Mode = JSRuntimeMode.Strict;
-        JSInterop.SetupVoid("diagramInterop.attachDrag", _ => true);
-        JSInterop.SetupVoid("diagramInterop.cleanup", _ => true);
 
         var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
 
-        // JS calls OnElementMouseDown when mousedown fires on [data-element]
-        cut.Instance.OnElementMouseDown("cones/0");
-        // JS calls OnDragEnd with final position on mouseup
-        await cut.Instance.OnDragEnd(50.0, 60.0);
+        cut.Find("polygon[data-element='cones/0']")
+            .MouseDown(new MouseEventArgs { ClientX = 10, ClientY = 20 });
 
-        Assert.Equal(50.0, state.Diagram.Cones[0].X);
-        Assert.Equal(60.0, state.Diagram.Cones[0].Y);
+        // JS calls back with the model-coordinate delta (+40, +40).
+        cut.InvokeAsync(() => cut.Instance.OnDragEnd("cones/0", 40.0, 40.0));
+
+        Assert.Equal(50.0, state.Diagram.Cones[0].X); // 10 + 40
+        Assert.Equal(60.0, state.Diagram.Cones[0].Y); // 20 + 40
     }
 
     [Fact]
-    public async Task Drag_WithNonMoveTool_DoesNotUpdatePosition()
+    public void Drag_WithActiveTool_DoesNotUpdatePosition()
     {
         var state = DefaultState();
-        state.SetTool("player"); // not "move"
+        state.SetTool("player"); // any active tool disables implicit drag
         state.PlaceCone(10.0, 20.0);
 
         var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
 
-        // OnElementMouseDown returns early when tool != "move", _draggingRef stays null
-        cut.Instance.OnElementMouseDown("cones/0");
-        // OnDragEnd: _draggingRef is null — PreviewMove not called
-        await cut.Instance.OnDragEnd(50.0, 60.0);
+        cut.Find("polygon[data-element='cones/0']")
+            .MouseDown(new MouseEventArgs { ClientX = 10, ClientY = 20 });
+
+        // _isDragging was never set, so OnDragEnd is a no-op.
+        cut.InvokeAsync(() => cut.Instance.OnDragEnd("cones/0", 40.0, 40.0));
 
         Assert.Equal(10.0, state.Diagram.Cones[0].X);
         Assert.Equal(20.0, state.Diagram.Cones[0].Y);
     }
 
     [Fact]
-    public async Task Drag_SecondDragAfterFirstEnds_DoesNotUpdatePosition()
+    public void Drag_SecondDragAfterFirstEnds_UsesUpdatedPosition()
     {
         var state = DefaultState();
-        state.SetTool("move");
         state.PlaceCone(10.0, 20.0);
-
-        JSInterop.Mode = JSRuntimeMode.Strict;
-        JSInterop.SetupVoid("diagramInterop.attachDrag", _ => true);
-        JSInterop.SetupVoid("diagramInterop.cleanup", _ => true);
 
         var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
 
-        cut.Instance.OnElementMouseDown("cones/0");
-        await cut.Instance.OnDragEnd(50.0, 60.0);
-
-        // After drag end, _draggingRef is null — a second OnDragEnd should be no-op
-        await cut.Instance.OnDragEnd(90.0, 90.0);
+        // First drag: +40 each → (50, 60)
+        cut.Find("polygon[data-element='cones/0']")
+            .MouseDown(new MouseEventArgs { ClientX = 10, ClientY = 20 });
+        cut.InvokeAsync(() => cut.Instance.OnDragEnd("cones/0", 40.0, 40.0));
 
         Assert.Equal(50.0, state.Diagram.Cones[0].X);
         Assert.Equal(60.0, state.Diagram.Cones[0].Y);
+
+        // Second drag: +20 each → (70, 80)
+        cut.Find("polygon[data-element='cones/0']")
+            .MouseDown(new MouseEventArgs { ClientX = 50, ClientY = 60 });
+        cut.InvokeAsync(() => cut.Instance.OnDragEnd("cones/0", 20.0, 20.0));
+
+        Assert.Equal(70.0, state.Diagram.Cones[0].X);
+        Assert.Equal(80.0, state.Diagram.Cones[0].Y);
     }
 }

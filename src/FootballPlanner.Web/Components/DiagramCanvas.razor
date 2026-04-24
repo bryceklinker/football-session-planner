@@ -8,7 +8,7 @@
      viewBox="0 0 100 @_pitchHeight.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
      style="width:100%;display:block;background:#2d5a27;cursor:@_cursor;overflow:visible;user-select:none;"
      @onclick="HandleSvgClick"
-     @onmousemove="HandleMouseMove">
+     @onmousemove="HandleSvgMouseMove">
 
     <defs>
         <marker id="arr-run-@_svgId" markerWidth="4" markerHeight="3" refX="4" refY="1.5" orient="auto">
@@ -31,11 +31,12 @@
         var goal = State.Diagram.Goals[gi];
         var gref = $"goals/{gi}";
         <rect data-element="@gref"
-              transform="translate(0,0)"
               x="@goal.X" y="@(goal.Y * _pitchHeight / 100)"
               width="@goal.Width" height="@(goal.Width / 7.0)"
               fill="none" stroke="white" stroke-width="0.8"
               style="cursor:pointer;"
+              @onmousedown="(e) => HandleElementMouseDown(e, gref)"
+              @onmousedown:stopPropagation="true"
               @onclick:stopPropagation="true"
               @onclick="() => HandleElementClick(gref)"/>
     }
@@ -46,10 +47,11 @@
         var cone = State.Diagram.Cones[ci];
         var cref = $"cones/{ci}";
         <polygon data-element="@cref"
-                 transform="translate(0,0)"
                  points="@cone.X,@(cone.Y * _pitchHeight / 100 - 2) @(cone.X - 1.5),@(cone.Y * _pitchHeight / 100 + 1) @(cone.X + 1.5),@(cone.Y * _pitchHeight / 100 + 1)"
                  fill="#f0a500"
                  style="cursor:pointer;"
+                 @onmousedown="(e) => HandleElementMouseDown(e, cref)"
+                 @onmousedown:stopPropagation="true"
                  @onclick:stopPropagation="true"
                  @onclick="() => HandleElementClick(cref)"/>
     }
@@ -60,8 +62,9 @@
         var coach = State.Diagram.Coaches[ki];
         var kref = $"coaches/{ki}";
         <g data-element="@kref"
-           transform="translate(0,0)"
            style="cursor:pointer;"
+           @onmousedown="(e) => HandleElementMouseDown(e, kref)"
+           @onmousedown:stopPropagation="true"
            @onclick:stopPropagation="true"
            @onclick="() => HandleElementClick(kref)">
             <circle cx="@coach.X" cy="@(coach.Y * _pitchHeight / 100)"
@@ -79,8 +82,9 @@
             var player = team.Players[pi];
             var pref = $"teams/{ti}/players/{pi}";
             <g data-element="@pref"
-               transform="translate(0,0)"
                style="cursor:pointer;"
+               @onmousedown="(e) => HandleElementMouseDown(e, pref)"
+               @onmousedown:stopPropagation="true"
                @onclick:stopPropagation="true"
                @onclick="() => HandleElementClick(pref)">
                 <circle cx="@player.X" cy="@(player.Y * _pitchHeight / 100)"
@@ -105,7 +109,6 @@
             _ => ("white", "none", $"arr-run-{_svgId}")
         };
         <path data-element="@aref"
-              transform="translate(0,0)"
               d="@BuildArrowPath(arrow)"
               stroke="@stroke"
               stroke-width="@(arrow.Style == ArrowStyle.Pass ? "0.4" : "0.5")"
@@ -113,6 +116,8 @@
               fill="none"
               marker-end="url(#@markerId)"
               style="cursor:pointer;"
+              @onmousedown="(e) => HandleElementMouseDown(e, aref)"
+              @onmousedown:stopPropagation="true"
               @onclick:stopPropagation="true"
               @onclick="() => HandleElementClick(aref)"/>
     }
@@ -139,21 +144,41 @@
     private readonly string _svgId = $"pitch-{Guid.NewGuid():N}";
     private double _ghostX = -1;
     private double _ghostY = -1;
-    private string? _draggingRef;
+
+    // True while a JS-driven drag is in progress (used to roll back undo on dispose).
+    private bool _isDragging;
+
+    // DotNetObjectReference passed to JS so it can invoke OnDragEnd.
     private DotNetObjectReference<DiagramCanvas>? _dotNetRef;
+
+    // Cached SVG bounding rect for client→SVG coordinate conversion (placement clicks + ghost).
+    private record SvgRect(double Left, double Top, double Width, double Height);
+    private SvgRect? _svgRect;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
-        _dotNetRef ??= DotNetObjectReference.Create(this);
+        _dotNetRef = DotNetObjectReference.Create(this);
         try
         {
-            await JS.InvokeVoidAsync("diagramInterop.attachDrag", _dotNetRef, _svgId);
+            _svgRect = await JS.InvokeAsync<SvgRect>("diagramInterop.getSvgRect", _svgId);
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "attachDrag failed");
+            Logger.LogError(ex, "getSvgRect failed");
         }
+    }
+
+    // Convert viewport client coordinates to SVG viewBox-percent coordinates.
+    // Falls back to a 1:1 pass-through when the rect is unavailable (e.g. in unit tests).
+    private (double x, double y) ToSvgCoords(double clientX, double clientY)
+    {
+        if (_svgRect is null or { Width: <= 0 })
+            return (clientX, clientY);
+        return (
+            Math.Clamp((clientX - _svgRect.Left) / _svgRect.Width * 100, 0, 100),
+            Math.Clamp((clientY - _svgRect.Top) / _svgRect.Height * 100, 0, 100)
+        );
     }
 
     private double _pitchHeight => State.Diagram.PitchFormat switch
@@ -262,8 +287,8 @@
             if (ellDyRy * ellDyRy < 1.0)
             {
                 double arcDx = arcRx * Math.Sqrt(1.0 - ellDyRy * ellDyRy);
-                // Arc from left intersection to right intersection, bulging upward (toward centre)
-                sb.Append($"<path d=\"M {F(spotX - arcDx)} {F(penTop)} A {F(arcRx)} {F(arcRy)} 0 0 0 {F(spotX + arcDx)} {F(penTop)}\" {faint}/>");
+                // sweep=1 (clockwise in SVG Y-down) → arc bulges upward, outside the penalty area.
+                sb.Append($"<path d=\"M {F(spotX - arcDx)} {F(penTop)} A {F(arcRx)} {F(arcRy)} 0 0 1 {F(spotX + arcDx)} {F(penTop)}\" {faint}/>");
             }
 
             // Goal (extends below goal line — visible via overflow:visible)
@@ -369,49 +394,41 @@
         _ => "default"
     };
 
-    // Called by JS when mousedown fires on a [data-element] child of the SVG.
-    // Returns the element's current model (x, y) so JS can compute the final
-    // position as basePos + dragDelta rather than using raw cursor coordinates.
-    [JSInvokable]
-    public object? OnElementMouseDown(string elementRef)
+    // Called when the user presses the mouse button on a draggable element.
+    // Drag is available by default when no tool is active.
+    // Pushes undo state and delegates drag tracking to JS (document-level listeners).
+    private async Task HandleElementMouseDown(MouseEventArgs e, string elementRef)
     {
-        if (State.ActiveTool != "move") return null;
-        _draggingRef = elementRef;
+        if (State.ActiveTool != null) return;
         State.BeginDrag();
-        var (x, y) = State.GetElementPosition(elementRef);
-        return new { x, y };
+        _isDragging = true;
+        try
+        {
+            await JS.InvokeVoidAsync("diagramInterop.startDrag",
+                _svgId, elementRef, e.ClientX, e.ClientY, _dotNetRef);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "startDrag failed for {ElementRef}", elementRef);
+            _isDragging = false;
+            State.Undo();
+        }
     }
 
-    // Called by JS window.mouseup with the final cursor position.
-    // JS owns the visual during drag (SVG transform); this does one model update + re-render.
+    // Called by JS on mouseup with the model-coordinate delta (dx, dy).
+    // Applies the delta to the element so arrows (and all other elements) move as a whole.
     [JSInvokable]
-    public Task OnDragEnd(double x, double y)
+    public void OnDragEnd(string elementRef, double dx, double dy)
     {
-        Console.WriteLine($"[DiagramCanvas] OnDragEnd: ref={_draggingRef ?? "(null)"} x={x:F1} y={y:F1}");
-        if (_draggingRef != null)
-            State.PreviewMove(_draggingRef, x, y);
-        _draggingRef = null;
-        return InvokeAsync(StateHasChanged);
+        if (!_isDragging) return;
+        _isDragging = false;
+        State.MoveByDelta(elementRef, dx, dy);
+        InvokeAsync(StateHasChanged);
     }
 
     private async Task HandleSvgClick(MouseEventArgs e)
     {
-        double x = e.OffsetX;
-        double y = e.OffsetY;
-        try
-        {
-            var coords = await JS.InvokeAsync<SvgCoords>(
-                "diagramInterop.getSvgCoordinates", _svgId, e.ClientX, e.ClientY);
-            if (coords is not null)
-            {
-                x = coords.X;
-                y = coords.Y;
-            }
-        }
-        catch (Exception ex)
-        {
-            Logger.LogError(ex, "diagram canvas error");
-        }
+        var (x, y) = ToSvgCoords(e.ClientX, e.ClientY);
 
         switch (State.ActiveTool)
         {
@@ -428,32 +445,14 @@
     private Task HandleElementClick(string elementRef)
         => OnElementClick.InvokeAsync(elementRef);
 
-    // SVG mousemove only updates the ghost cursor for placement tools.
-    // Drag preview is handled by JS window mousemove → OnDragMove.
-    private async Task HandleMouseMove(MouseEventArgs e)
+    // Updates the ghost cursor position for placement tools.
+    // Drag movement is handled entirely by JS document-level listeners.
+    private void HandleSvgMouseMove(MouseEventArgs e)
     {
         if (!IsPlacementTool) return;
-
-        double x = e.OffsetX;
-        double y = e.OffsetY;
-        try
-        {
-            var coords = await JS.InvokeAsync<SvgCoords>(
-                "diagramInterop.getSvgCoordinates", _svgId, e.ClientX, e.ClientY);
-            if (coords is not null)
-            {
-                x = coords.X;
-                y = coords.Y;
-            }
-        }
-        catch (Exception ex)
-        {
-            /* JS unavailable — fall back to offset coordinates */
-            Logger.LogError(ex, "diagram canvas error");
-        }
-
-        _ghostX = x;
-        _ghostY = y * _pitchHeight / 100.0;
+        var (gx, gy) = ToSvgCoords(e.ClientX, e.ClientY);
+        _ghostX = gx;
+        _ghostY = gy * _pitchHeight / 100.0;
     }
 
     private string BuildArrowPath(ArrowElement arrow)
@@ -495,20 +494,12 @@
 
     public async ValueTask DisposeAsync()
     {
-        if (_draggingRef != null)
+        // Roll back the speculative undo entry if disposed mid-drag.
+        if (_isDragging)
             State.Undo();
-        try
-        {
-            await JS.InvokeVoidAsync("diagramInterop.cleanup", _svgId);
-        }
-        catch (JSException)
-        {
-            /* ignore — component may be disposing during test teardown */
-        }
-
+        try { await JS.InvokeVoidAsync("diagramInterop.cancelDrag"); }
+        catch { /* component may be gone; ignore */ }
         _dotNetRef?.Dispose();
     }
-
-    private record SvgCoords(double X, double Y);
 
 }

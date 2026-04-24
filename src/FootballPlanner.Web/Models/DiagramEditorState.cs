@@ -94,6 +94,11 @@ public class DiagramEditorState
         Diagram = ApplyMove(Diagram, elementRef, x, y);
     }
 
+    // Commits a completed drag by translating the element by (dx, dy) in model coordinates.
+    // For arrows the entire arrow (both endpoints + control point) is translated together.
+    public void MoveByDelta(string elementRef, double dx, double dy)
+        => Diagram = ApplyDelta(Diagram, elementRef, dx, dy);
+
     public void BeginDrag() => PushUndo();
 
     public (double X, double Y) GetElementPosition(string elementRef)
@@ -254,6 +259,43 @@ public class DiagramEditorState
         var result = list.ToList();
         result.RemoveAt(index);
         return result;
+    }
+
+    private static double ClampPos(double v) => Math.Clamp(v, 0, 100);
+
+    private static DiagramModel ApplyDelta(DiagramModel diagram, string elementRef, double dx, double dy)
+    {
+        var parts = elementRef.Split('/');
+        if (parts.Length < 2 || !int.TryParse(parts[1], out var idx)) return diagram;
+
+        return parts[0] switch
+        {
+            "teams" when parts.Length >= 4 && int.TryParse(parts[3], out var pIdx)
+                => ApplyDeltaPlayer(diagram, idx, pIdx, dx, dy),
+            "coaches" => diagram with { Coaches = ReplaceAt(diagram.Coaches, idx,
+                c => c with { X = ClampPos(c.X + dx), Y = ClampPos(c.Y + dy) }) },
+            "cones"   => diagram with { Cones   = ReplaceAt(diagram.Cones,   idx,
+                c => c with { X = ClampPos(c.X + dx), Y = ClampPos(c.Y + dy) }) },
+            "goals"   => diagram with { Goals   = ReplaceAt(diagram.Goals,   idx,
+                g => g with { X = ClampPos(g.X + dx), Y = ClampPos(g.Y + dy) }) },
+            // Move entire arrow — translate all points by the same delta.
+            "arrows"  => diagram with { Arrows  = ReplaceAt(diagram.Arrows,  idx,
+                a => a with {
+                    X1 = ClampPos(a.X1 + dx), Y1 = ClampPos(a.Y1 + dy),
+                    X2 = ClampPos(a.X2 + dx), Y2 = ClampPos(a.Y2 + dy),
+                    Cx = ClampPos(a.Cx + dx), Cy = ClampPos(a.Cy + dy)
+                }) },
+            _ => diagram
+        };
+    }
+
+    private static DiagramModel ApplyDeltaPlayer(DiagramModel diagram, int teamIdx, int playerIdx, double dx, double dy)
+    {
+        var teams = diagram.Teams.ToList();
+        var team = teams[teamIdx];
+        teams[teamIdx] = team with { Players = ReplaceAt(team.Players, playerIdx,
+            p => p with { X = ClampPos(p.X + dx), Y = ClampPos(p.Y + dy) }) };
+        return diagram with { Teams = teams };
     }
 
     private static DiagramModel CreateDefault() => new(

@@ -1,12 +1,13 @@
 // diagram-interop.js
-// Handles all mouse tracking for the SVG pitch diagram.
-// attachDrag() is called once on first render. During drag, the element is moved
-// visually via an SVG transform (no Blazor re-renders). On mouseup, the final
-// position is sent to C# once, which updates the model and triggers one re-render.
+// Coordinate helpers and drag handling for the SVG pitch diagram.
+// Drag is handled at the document level (not SVG element level) to ensure reliable
+// mouse capture even when the pointer moves outside the SVG during fast drags.
 
 window.diagramInterop = (function () {
     console.log('[diagramInterop] loaded');
-    let _listeners = new Map(); // svgId -> { mousedown, move, up, svg }
+
+    // Holds cleanup fn for the active drag so we can cancel on dispose.
+    let _activeDragCleanup = null;
 
     function getSvgCoordinates(svgId, clientX, clientY) {
         const svg = document.getElementById(svgId);
@@ -22,6 +23,13 @@ window.diagramInterop = (function () {
         return { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) };
     }
 
+    function getSvgRect(svgId) {
+        const svg = document.getElementById(svgId);
+        if (!svg) return null;
+        const r = svg.getBoundingClientRect();
+        return { left: r.left, top: r.top, width: r.width, height: r.height };
+    }
+
     function getElementRefAt(svgId, clientX, clientY) {
         const el = document.elementFromPoint(clientX, clientY);
         if (!el) return null;
@@ -34,114 +42,75 @@ window.diagramInterop = (function () {
         return null;
     }
 
-    // Attaches a mousedown listener to the SVG and window-level mousemove/mouseup.
-    // During drag, the element is translated via an SVG transform attribute for
-    // smooth visual feedback without Blazor re-renders.
-    // On mouseup, OnDragEnd(finalX, finalY) is called once to update the model.
-    function attachDrag(dotNetRef, svgId) {
-        console.log('[diagramInterop] attachDrag called for svgId=' + svgId);
-        cleanup(svgId);
+    // Start a document-level drag for the SVG element identified by elementRef.
+    // During the drag the element is moved visually via a SVG transform; on mouseup
+    // the transform is removed and OnDragEnd is called on the Blazor component.
+    function startDrag(svgId, elementRef, startClientX, startClientY, dotNetRef) {
+        var svg = document.getElementById(svgId);
+        if (!svg) { console.error('[diagramInterop] startDrag: SVG not found', svgId); return; }
 
-        const svg = document.getElementById(svgId);
-        if (!svg) {
-            console.warn('[diagramInterop] attachDrag: SVG element not found for id=' + svgId);
-            return;
+        var svgRect = svg.getBoundingClientRect();
+
+        // Parse viewBox from the attribute string — more reliable than viewBox.baseVal.
+        var vbWidth = 100, vbHeight = 64.76;
+        var vbAttr = svg.getAttribute('viewBox');
+        if (vbAttr) {
+            var vbParts = vbAttr.trim().split(/[\s,]+/);
+            if (vbParts.length >= 4) {
+                vbWidth = parseFloat(vbParts[2]) || 100;
+                vbHeight = parseFloat(vbParts[3]) || 64.76;
+            }
         }
 
-        let activeElement = null;  // element ref string ("cones/0", etc.)
-        let activeSvgEl = null;    // the actual dragged SVG DOM element
-        let startX = 0, startY = 0; // drag-start cursor position in SVG % coords
-        let lastX = 0, lastY = 0;   // most recent cursor position in SVG % coords
-        let baseX = 0, baseY = 0;   // element's model position at drag start
+        var el = svg.querySelector('[data-element="' + elementRef + '"]');
+        if (!el) { console.error('[diagramInterop] startDrag: element not found', elementRef); return; }
 
-        const onMouseDown = function(ev) {
-            // Walk up from event target to find the nearest [data-element] ancestor.
-            let el = ev.target;
-            let svgEl = null;
-            let elementRef = null;
-            while (el && el !== svg) {
-                const ref = el.getAttribute('data-element');
-                if (ref) { elementRef = ref; svgEl = el; break; }
-                el = el.parentElement;
-            }
-            if (!elementRef) return;
+        // Cancel any pre-existing drag.
+        if (_activeDragCleanup) _activeDragCleanup();
 
-            const c = _svgCoords(svg, ev.clientX, ev.clientY);
-            console.log('[diagramInterop] element mousedown: ref=' + elementRef +
-                        ' x=' + c.x.toFixed(1) + ' y=' + c.y.toFixed(1));
+        var startPixelX = startClientX - svgRect.left;
+        var startPixelY = startClientY - svgRect.top;
+        // Start position in model coordinates (0–100 for both axes).
+        var startModelX = svgRect.width  > 0 ? (startPixelX / svgRect.width)  * 100 : 0;
+        var startModelY = svgRect.height > 0 ? (startPixelY / svgRect.height) * 100 : 0;
 
-            activeElement = elementRef;
-            activeSvgEl = svgEl;
-            startX = c.x;
-            startY = c.y;
-            lastX = c.x;
-            lastY = c.y;
-            baseX = c.x; // temporary fallback until C# returns the model position
-            baseY = c.y;
+        function onMove(e) {
+            var dxPx = (e.clientX - svgRect.left) - startPixelX;
+            var dyPx = (e.clientY - svgRect.top)  - startPixelY;
+            // Convert pixel delta to SVG viewBox coordinate delta for the visual transform.
+            var dxSvg = svgRect.width  > 0 ? (dxPx / svgRect.width)  * vbWidth  : 0;
+            var dySvg = svgRect.height > 0 ? (dyPx / svgRect.height) * vbHeight : 0;
+            el.setAttribute('transform', 'translate(' + dxSvg + ' ' + dySvg + ')');
+        }
 
-            dotNetRef.invokeMethodAsync('OnElementMouseDown', elementRef)
-                .then(function(pos) {
-                    // C# returns { x, y } = element's model position at drag start.
-                    // Update base only if this drag is still active.
-                    if (pos && activeElement === elementRef) {
-                        baseX = pos.x;
-                        baseY = pos.y;
-                    }
-                })
-                .catch(function(err) { console.error('[diagramInterop] OnElementMouseDown failed:', err); });
-        };
+        function onUp(e) {
+            cleanup();
+            // Remove the visual transform — Blazor re-renders the element at the new model position.
+            el.removeAttribute('transform');
+            // Pass the model-coordinate delta so Blazor can translate all element points uniformly.
+            var endModelX = svgRect.width  > 0 ? (e.clientX - svgRect.left) / svgRect.width  * 100 : 0;
+            var endModelY = svgRect.height > 0 ? (e.clientY - svgRect.top)  / svgRect.height * 100 : 0;
+            var deltaX = endModelX - startModelX;
+            var deltaY = endModelY - startModelY;
+            dotNetRef.invokeMethodAsync('OnDragEnd', elementRef, deltaX, deltaY)
+                .catch(function (err) { console.error('[diagramInterop] OnDragEnd failed:', err); });
+        }
 
-        const onMove = function(ev) {
-            if (!activeElement || !activeSvgEl) return;
-            const c = _svgCoords(svg, ev.clientX, ev.clientY);
-            lastX = c.x;
-            lastY = c.y;
+        function cleanup() {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            _activeDragCleanup = null;
+        }
 
-            // Translate element in viewBox units for immediate visual feedback.
-            // SVG viewBox x range = 0..100 (same as % coords), y range = 0..pitchHeight.
-            const vb = svg.viewBox.baseVal;
-            const dx = c.x - startX;
-            const dy = (c.y - startY) * vb.height / 100;
-            activeSvgEl.setAttribute('transform', 'translate(' + dx + ',' + dy + ')');
-        };
-
-        const onUp = function() {
-            if (!activeElement) return;
-            const ref = activeElement;
-            // Compute final model position as basePos + delta so the element lands
-            // exactly where it appears visually, regardless of where the user grabbed it.
-            const fx = baseX + (lastX - startX);
-            const fy = baseY + (lastY - startY);
-            const svgElToReset = activeSvgEl;
-            console.log('[diagramInterop] mouseup: ref=' + ref +
-                        ' finalX=' + fx.toFixed(1) + ' finalY=' + fy.toFixed(1));
-
-            activeElement = null;
-            activeSvgEl = null;
-            // Do NOT remove the transform here — Blazor resets it to translate(0,0)
-            // when it re-renders the element at the new model position, so the
-            // transition is seamless with no snap-back frame.
-
-            dotNetRef.invokeMethodAsync('OnDragEnd', fx, fy)
-                .catch(function(err) { console.error('[diagramInterop] OnDragEnd failed:', err); });
-        };
-
-        svg.addEventListener('mousedown', onMouseDown);
-        window.addEventListener('mousemove', onMove);
-        window.addEventListener('mouseup', onUp);
-        _listeners.set(svgId, { mousedown: onMouseDown, move: onMove, up: onUp, svg });
-        console.log('[diagramInterop] attachDrag: listeners registered');
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+        _activeDragCleanup = cleanup;
     }
 
-    function cleanup(svgId) {
-        const entry = _listeners.get(svgId);
-        if (!entry) return;
-        if (entry.svg && entry.mousedown)
-            entry.svg.removeEventListener('mousedown', entry.mousedown);
-        window.removeEventListener('mousemove', entry.move);
-        window.removeEventListener('mouseup', entry.up);
-        _listeners.delete(svgId);
+    // Remove any active document-level drag listeners (called on component dispose).
+    function cancelDrag() {
+        if (_activeDragCleanup) _activeDragCleanup();
     }
 
-    return { getSvgCoordinates, getElementRefAt, attachDrag, cleanup };
+    return { getSvgCoordinates, getElementRefAt, getSvgRect, startDrag, cancelDrag };
 })();

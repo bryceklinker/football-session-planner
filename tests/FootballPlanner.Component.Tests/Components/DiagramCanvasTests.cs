@@ -148,6 +148,142 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public void SvgClick_WithConeTool_FiresOnPlaceCone()
+    {
+        var state = DefaultState();
+        state.SetTool("cone");
+        var fired = false;
+
+        var cut = Render<DiagramCanvas>(p =>
+        {
+            p.Add(x => x.State, state);
+            p.Add(x => x.OnPlaceCone, (_) => fired = true);
+        });
+
+        cut.Find("svg").Click();
+
+        Assert.True(fired);
+    }
+
+    [Fact]
+    public void SvgClick_WithCoachTool_FiresOnPlaceCoach()
+    {
+        var state = DefaultState();
+        state.SetTool("coach");
+        var fired = false;
+
+        var cut = Render<DiagramCanvas>(p =>
+        {
+            p.Add(x => x.State, state);
+            p.Add(x => x.OnPlaceCoach, (_) => fired = true);
+        });
+
+        cut.Find("svg").Click();
+
+        Assert.True(fired);
+    }
+
+    [Fact]
+    public void SvgClick_WithGoalTool_FiresOnPlaceGoal()
+    {
+        var state = DefaultState();
+        state.SetTool("goal");
+        var fired = false;
+
+        var cut = Render<DiagramCanvas>(p =>
+        {
+            p.Add(x => x.State, state);
+            p.Add(x => x.OnPlaceGoal, (_) => fired = true);
+        });
+
+        cut.Find("svg").Click();
+
+        Assert.True(fired);
+    }
+
+    [Fact]
+    public void SvgClick_WithArrowRunTool_FiresOnArrowPoint()
+    {
+        var state = DefaultState();
+        state.SetTool("arrow-run");
+        var fired = false;
+
+        var cut = Render<DiagramCanvas>(p =>
+        {
+            p.Add(x => x.State, state);
+            p.Add(x => x.OnArrowPoint, (_) => fired = true);
+        });
+
+        cut.Find("svg").Click();
+
+        Assert.True(fired);
+    }
+
+    [Fact]
+    public void SvgClick_WithNoTool_DoesNotFireAnyPlacementCallback()
+    {
+        var state = DefaultState();
+        // no tool set
+        var anyFired = false;
+
+        var cut = Render<DiagramCanvas>(p =>
+        {
+            p.Add(x => x.State, state);
+            p.Add(x => x.OnPlacePlayer, (_) => anyFired = true);
+            p.Add(x => x.OnPlaceCone,   (_) => anyFired = true);
+            p.Add(x => x.OnPlaceCoach,  (_) => anyFired = true);
+            p.Add(x => x.OnPlaceGoal,   (_) => anyFired = true);
+        });
+
+        cut.Find("svg").Click();
+
+        Assert.False(anyFired);
+    }
+
+    [Fact]
+    public void ElementClick_FiresOnElementClick()
+    {
+        var state = DefaultState();
+        state.PlaceCone(30.0, 40.0);
+        string? clickedRef = null;
+
+        var cut = Render<DiagramCanvas>(p =>
+        {
+            p.Add(x => x.State, state);
+            p.Add(x => x.OnElementClick, (ref_) => clickedRef = ref_);
+        });
+
+        cut.Find("polygon[data-element='cones/0']").Click();
+
+        Assert.Equal("cones/0", clickedRef);
+    }
+
+    [Fact]
+    public void Renders_GoalRect_ForEachGoal()
+    {
+        var state = DefaultState();
+        state.PlaceGoal(50.0, 5.0);
+
+        var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
+
+        Assert.NotNull(cut.Find("rect[data-element^='goals']"));
+    }
+
+    [Fact]
+    public void Renders_PlayersAcrossMultipleTeams()
+    {
+        var state = DefaultState();
+        state.SetActiveTeam("t1");
+        state.PlacePlayer(20.0, 30.0);
+        state.SetActiveTeam("t2");
+        state.PlacePlayer(60.0, 70.0);
+
+        var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
+
+        Assert.Equal(2, cut.FindAll("[data-element^='teams']").Count);
+    }
+
+    [Fact]
     public void Drag_SecondDragAfterFirstEnds_UsesUpdatedPosition()
     {
         var state = DefaultState();

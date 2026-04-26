@@ -284,6 +284,56 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
     }
 
     [Fact]
+    public void Renders_SelectionRing_ForSelectedElement()
+    {
+        var state = DefaultState();
+        state.PlaceCone(50.0, 50.0);
+        state.SelectElement("cones/0");
+
+        var cut = Render<DiagramCanvas>(p => p.Add(x => x.State, state));
+
+        // A selection ring circle is rendered in addition to the cone polygon
+        var circles = cut.FindAll("circle");
+        Assert.NotEmpty(circles);
+    }
+
+    [Fact]
+    public void SvgClick_WithNoTool_FiresOnDeselect()
+    {
+        var state = DefaultState();
+        var fired = false;
+
+        var cut = Render<DiagramCanvas>(p =>
+        {
+            p.Add(x => x.State, state);
+            p.Add(x => x.OnDeselect, () => fired = true);
+        });
+
+        cut.Find("svg").Click();
+
+        Assert.True(fired);
+    }
+
+    [Fact]
+    public void SvgClick_WithActiveTool_DoesNotFireOnDeselect()
+    {
+        var state = DefaultState();
+        state.SetTool("cone");
+        var fired = false;
+
+        var cut = Render<DiagramCanvas>(p =>
+        {
+            p.Add(x => x.State, state);
+            p.Add(x => x.OnDeselect, () => fired = true);
+            p.Add(x => x.OnPlaceCone, (_) => { });
+        });
+
+        cut.Find("svg").Click();
+
+        Assert.False(fired);
+    }
+
+    [Fact]
     public void Drag_SecondDragAfterFirstEnds_UsesUpdatedPosition()
     {
         var state = DefaultState();

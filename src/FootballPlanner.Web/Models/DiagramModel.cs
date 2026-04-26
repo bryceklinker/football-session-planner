@@ -22,7 +22,8 @@ public record DiagramModel(
     List<CoachElement> Coaches,
     List<ConeElement> Cones,
     List<GoalElement> Goals,
-    List<ArrowElement> Arrows);
+    List<ArrowElement> Arrows,
+    string? Notes = null);
 
 public record DiagramTeam(
     string Id,
@@ -30,9 +31,9 @@ public record DiagramTeam(
     string Color,
     List<PlayerElement> Players);
 
-public record PlayerElement(string Label, double X, double Y);
-public record CoachElement(string Label, double X, double Y);
-public record ConeElement(double X, double Y);
+public record PlayerElement(string Label, double X, double Y, double Radius = 2.0);
+public record CoachElement(string Label, double X, double Y, double Radius = 2.0);
+public record ConeElement(double X, double Y, double Size = 1.0, string Color = "#f0a500");
 public record GoalElement(double X, double Y, double Width);
 
 public record ArrowElement(

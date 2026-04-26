@@ -514,4 +514,205 @@ public class DiagramEditorStateTests
         // t2 remains, so ActiveTeamId should not be null
         Assert.NotNull(state.ActiveTeamId);
     }
+
+    // ── Selection ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void SelectElement_SetsSelectedElement()
+    {
+        var state = new DiagramEditorState();
+        state.PlaceCone(50.0, 50.0);
+
+        state.SelectElement("cones/0");
+
+        Assert.Equal("cones/0", state.SelectedElement);
+    }
+
+    [Fact]
+    public void SelectElement_Null_ClearsSelection()
+    {
+        var state = new DiagramEditorState();
+        state.SelectElement("cones/0");
+
+        state.SelectElement(null);
+
+        Assert.Null(state.SelectedElement);
+    }
+
+    [Fact]
+    public void DeleteElement_WhenSelectedElement_ClearsSelection()
+    {
+        var state = new DiagramEditorState();
+        state.PlaceCone(50.0, 50.0);
+        state.SelectElement("cones/0");
+
+        state.DeleteElement("cones/0");
+
+        Assert.Null(state.SelectedElement);
+    }
+
+    [Fact]
+    public void Undo_ClearsSelectedElement()
+    {
+        var state = new DiagramEditorState();
+        state.PlaceCone(50.0, 50.0);
+        state.SelectElement("cones/0");
+
+        state.Undo();
+
+        Assert.Null(state.SelectedElement);
+    }
+
+    // ── Notes ─────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void SetNotes_UpdatesNotes()
+    {
+        var state = new DiagramEditorState();
+
+        state.SetNotes("Keep compact, 10 min max");
+
+        Assert.Equal("Keep compact, 10 min max", state.Diagram.Notes);
+    }
+
+    [Fact]
+    public void SetNotes_DoesNotPushToUndoStack()
+    {
+        var state = new DiagramEditorState();
+
+        state.SetNotes("first");
+        state.SetNotes("second");
+
+        Assert.False(state.CanUndo);
+    }
+
+    // ── Resize ────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void ResizeElement_Player_UpdatesRadius()
+    {
+        var state = new DiagramEditorState();
+        state.SetActiveTeam("t1");
+        state.PlacePlayer(50.0, 50.0);
+
+        state.ResizeElement("teams/0/players/0", 3.5);
+
+        Assert.Equal(3.5, state.Diagram.Teams[0].Players[0].Radius);
+    }
+
+    [Fact]
+    public void ResizeElement_Coach_UpdatesRadius()
+    {
+        var state = new DiagramEditorState();
+        state.PlaceCoach(50.0, 50.0);
+
+        state.ResizeElement("coaches/0", 4.0);
+
+        Assert.Equal(4.0, state.Diagram.Coaches[0].Radius);
+    }
+
+    [Fact]
+    public void ResizeElement_Cone_UpdatesSize()
+    {
+        var state = new DiagramEditorState();
+        state.PlaceCone(50.0, 50.0);
+
+        state.ResizeElement("cones/0", 2.0);
+
+        Assert.Equal(2.0, state.Diagram.Cones[0].Size);
+    }
+
+    [Fact]
+    public void ResizeElement_ClampsToMinAndMax()
+    {
+        var state = new DiagramEditorState();
+        state.PlaceCone(50.0, 50.0);
+        state.SetActiveTeam("t1");
+        state.PlacePlayer(30.0, 30.0);
+
+        state.ResizeElement("cones/0", 0.1); // below min 0.5
+        state.ResizeElement("teams/0/players/0", 99.0); // above max 5.0
+
+        Assert.Equal(0.5, state.Diagram.Cones[0].Size);
+        Assert.Equal(5.0, state.Diagram.Teams[0].Players[0].Radius);
+    }
+
+    [Fact]
+    public void ResizeElement_IsUndoable()
+    {
+        var state = new DiagramEditorState();
+        state.PlaceCone(50.0, 50.0);
+
+        state.ResizeElement("cones/0", 3.0);
+        state.Undo();
+
+        Assert.Equal(1.0, state.Diagram.Cones[0].Size);
+    }
+
+    // ── Cone colour ───────────────────────────────────────────────────────────
+
+    [Fact]
+    public void ChangeConeColor_UpdatesColor()
+    {
+        var state = new DiagramEditorState();
+        state.PlaceCone(50.0, 50.0);
+
+        state.ChangeConeColor("cones/0", "#e94560");
+
+        Assert.Equal("#e94560", state.Diagram.Cones[0].Color);
+    }
+
+    [Fact]
+    public void ChangeConeColor_IsUndoable()
+    {
+        var state = new DiagramEditorState();
+        state.PlaceCone(50.0, 50.0);
+
+        state.ChangeConeColor("cones/0", "#e94560");
+        state.Undo();
+
+        Assert.Equal("#f0a500", state.Diagram.Cones[0].Color);
+    }
+
+    // ── TransferPlayer ────────────────────────────────────────────────────────
+
+    [Fact]
+    public void TransferPlayer_MovesPlayerToNewTeam()
+    {
+        var state = new DiagramEditorState();
+        state.SetActiveTeam("t1");
+        state.PlacePlayer(30.0, 30.0);
+
+        state.TransferPlayer("teams/0/players/0", "t2");
+
+        Assert.Empty(state.Diagram.Teams[0].Players);
+        Assert.Single(state.Diagram.Teams[1].Players);
+    }
+
+    [Fact]
+    public void TransferPlayer_UpdatesSelectedElement()
+    {
+        var state = new DiagramEditorState();
+        state.SetActiveTeam("t1");
+        state.PlacePlayer(30.0, 30.0);
+        state.SelectElement("teams/0/players/0");
+
+        state.TransferPlayer("teams/0/players/0", "t2");
+
+        Assert.Equal("teams/1/players/0", state.SelectedElement);
+    }
+
+    [Fact]
+    public void TransferPlayer_IsUndoable()
+    {
+        var state = new DiagramEditorState();
+        state.SetActiveTeam("t1");
+        state.PlacePlayer(30.0, 30.0);
+
+        state.TransferPlayer("teams/0/players/0", "t2");
+        state.Undo();
+
+        Assert.Single(state.Diagram.Teams[0].Players);
+        Assert.Empty(state.Diagram.Teams[1].Players);
+    }
 }

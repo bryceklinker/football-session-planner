@@ -20,12 +20,23 @@
                                OnPlaceCone="PlaceCone"
                                OnPlaceGoal="PlaceGoal"
                                OnArrowPoint="HandleArrowPoint"
-                               OnElementClick="HandleElementClick" />
+                               OnElementClick="HandleElementClick"
+                               OnDeselect="Deselect" />
             </div>
 
-            <!-- Right teams panel -->
-            <div style="width:160px;">
+            <!-- Right panel: teams + element properties + notes -->
+            <div style="width:220px;display:flex;flex-direction:column;gap:0;overflow-y:auto;">
                 <DiagramTeamsPanel State="_state" />
+                <DiagramElementPanel State="_state" OnChanged="HandleToolbarChanged" />
+                <MudDivider Class="my-2" />
+                <MudText Typo="Typo.subtitle2" Class="mb-1">Notes</MudText>
+                <MudTextField T="string"
+                              aria-label="Notes"
+                              Value="@_state.Diagram.Notes"
+                              ValueChanged="@((v) => { _state.SetNotes(v); StateHasChanged(); })"
+                              Lines="6"
+                              Variant="Variant.Outlined"
+                              Placeholder="Add notes about this activity…" />
             </div>
         </div>
     </DialogContent>
@@ -85,13 +96,18 @@
 
     private void HandleElementClick(string elementRef)
     {
-        if (_state.ActiveTool == "delete") _state.DeleteElement(elementRef);
+        if (_state.ActiveTool == "delete")
+            _state.DeleteElement(elementRef);
+        else
+            _state.SelectElement(elementRef);
         StateHasChanged();
     }
 
-    private void Undo() { _state.Undo(); StateHasChanged(); }
-    private void Redo() { _state.Redo(); StateHasChanged(); }
-    private void Clear() { _state.Clear(); StateHasChanged(); }
+    private void Deselect() { _state.SelectElement(null); StateHasChanged(); }
+
+    private void Undo() { _state.Undo(); StateHasChanged(); }   // Undo clears SelectedElement internally
+    private void Redo() { _state.Redo(); StateHasChanged(); }   // Redo clears SelectedElement internally
+    private void Clear() { _state.Clear(); StateHasChanged(); } // Clear clears SelectedElement internally
     private void Cancel() => MudDialog.Cancel();
 
     private async Task SaveAsync()

@@ -11,6 +11,7 @@ public class DiagramEditorState
     public string? ActiveTool { get; private set; }
     public string? ActiveTeamId { get; private set; }
     public (double X, double Y)? ArrowStartPoint { get; private set; }
+    public string? SelectedElement { get; private set; }
 
     public bool CanUndo => _undoStack.Count > 0;
     public bool CanRedo => _redoStack.Count > 0;
@@ -23,6 +24,59 @@ public class DiagramEditorState
         ActiveTool = null;
         ActiveTeamId = Diagram.Teams.FirstOrDefault()?.Id;
         ArrowStartPoint = null;
+        SelectedElement = null;
+    }
+
+    public void SelectElement(string? elementRef) => SelectedElement = elementRef;
+
+    // Notes are not pushed to the undo stack — per-keystroke undo entries would be too noisy.
+    public void SetNotes(string? notes) => Diagram = Diagram with { Notes = notes };
+
+    public void ResizeElement(string elementRef, double value)
+    {
+        var parts = elementRef.Split('/');
+        if (parts.Length < 2 || !int.TryParse(parts[1], out var idx)) return;
+        PushUndo();
+        Diagram = parts[0] switch
+        {
+            "teams" when parts.Length >= 4 && int.TryParse(parts[3], out var pIdx)
+                => ApplyResizePlayer(Diagram, idx, pIdx, Math.Clamp(value, 1.0, 5.0)),
+            "coaches" => Diagram with { Coaches = ReplaceAt(Diagram.Coaches, idx,
+                c => c with { Radius = Math.Clamp(value, 1.0, 5.0) }) },
+            "cones" => Diagram with { Cones = ReplaceAt(Diagram.Cones, idx,
+                c => c with { Size = Math.Clamp(value, 0.5, 4.0) }) },
+            _ => Diagram
+        };
+    }
+
+    public void ChangeConeColor(string elementRef, string color)
+    {
+        var parts = elementRef.Split('/');
+        if (parts.Length < 2 || parts[0] != "cones" || !int.TryParse(parts[1], out var idx)) return;
+        PushUndo();
+        Diagram = Diagram with { Cones = ReplaceAt(Diagram.Cones, idx, c => c with { Color = color }) };
+    }
+
+    public void TransferPlayer(string elementRef, string newTeamId)
+    {
+        var parts = elementRef.Split('/');
+        if (parts.Length < 4 || !int.TryParse(parts[1], out var teamIdx) || !int.TryParse(parts[3], out var playerIdx))
+            return;
+        var currentTeam = Diagram.Teams[teamIdx];
+        if (currentTeam.Id == newTeamId) return;
+        var newTeamIdx = Diagram.Teams.FindIndex(t => t.Id == newTeamId);
+        if (newTeamIdx < 0) return;
+
+        var player = currentTeam.Players[playerIdx];
+        var newPlayerIdx = Diagram.Teams[newTeamIdx].Players.Count;
+
+        PushUndo();
+        var teams = Diagram.Teams.ToList();
+        teams[teamIdx] = currentTeam with { Players = RemoveAt(currentTeam.Players, playerIdx) };
+        var newTeam = teams[newTeamIdx];
+        teams[newTeamIdx] = newTeam with { Players = [.. newTeam.Players, player] };
+        Diagram = Diagram with { Teams = teams };
+        SelectedElement = $"teams/{newTeamIdx}/players/{newPlayerIdx}";
     }
 
     public void SetTool(string tool)
@@ -124,6 +178,7 @@ public class DiagramEditorState
     {
         PushUndo();
         Diagram = ApplyDelete(Diagram, elementRef);
+        if (SelectedElement == elementRef) SelectedElement = null;
     }
 
     public void AddTeam(string id, string name, string color)
@@ -163,6 +218,7 @@ public class DiagramEditorState
             Arrows = [],
             Teams = Diagram.Teams.Select(t => t with { Players = [] }).ToList()
         };
+        SelectedElement = null;
     }
 
     public void Undo()
@@ -170,6 +226,7 @@ public class DiagramEditorState
         if (_undoStack.Count == 0) return;
         _redoStack.Push(Diagram);
         Diagram = _undoStack.Pop();
+        SelectedElement = null;
     }
 
     public void Redo()
@@ -177,6 +234,7 @@ public class DiagramEditorState
         if (_redoStack.Count == 0) return;
         _undoStack.Push(Diagram);
         Diagram = _redoStack.Pop();
+        SelectedElement = null;
     }
 
     private void PushUndo()
@@ -211,6 +269,14 @@ public class DiagramEditorState
                 a => a with { X2 = x, Y2 = y, Cx = (a.X1 + x) / 2.0, Cy = (a.Y1 + y) / 2.0 }) },
             _ => diagram
         };
+    }
+
+    private static DiagramModel ApplyResizePlayer(DiagramModel diagram, int teamIdx, int playerIdx, double radius)
+    {
+        var teams = diagram.Teams.ToList();
+        var team = teams[teamIdx];
+        teams[teamIdx] = team with { Players = ReplaceAt(team.Players, playerIdx, p => p with { Radius = radius }) };
+        return diagram with { Teams = teams };
     }
 
     private static DiagramModel ApplyMovePlayer(DiagramModel diagram, int teamIdx, int playerIdx, double x, double y)

@@ -31,6 +31,13 @@
     {
         var goal = State.Diagram.Goals[gi];
         var gref = $"goals/{gi}";
+        @if (State.SelectedElement == gref)
+        {
+            <rect x="@(goal.X - 0.5)" y="@(goal.Y * _pitchHeight / 100 - 0.5)"
+                  width="@(goal.Width + 1)" height="@(goal.Width / 7.0 + 1)"
+                  fill="none" stroke="white" stroke-width="0.4" stroke-dasharray="1,1"
+                  pointer-events="none"/>
+        }
         <rect data-element="@gref"
               x="@goal.X" y="@(goal.Y * _pitchHeight / 100)"
               width="@goal.Width" height="@(goal.Width / 7.0)"
@@ -47,9 +54,17 @@
     {
         var cone = State.Diagram.Cones[ci];
         var cref = $"cones/{ci}";
+        var cy = cone.Y * _pitchHeight / 100;
+        var cs = cone.Size;
+        @if (State.SelectedElement == cref)
+        {
+            <circle cx="@cone.X" cy="@cy" r="@(cs * 2.5)"
+                    fill="none" stroke="white" stroke-width="0.4" stroke-dasharray="1,1"
+                    pointer-events="none"/>
+        }
         <polygon data-element="@cref"
-                 points="@cone.X,@(cone.Y * _pitchHeight / 100 - 2) @(cone.X - 1.5),@(cone.Y * _pitchHeight / 100 + 1) @(cone.X + 1.5),@(cone.Y * _pitchHeight / 100 + 1)"
-                 fill="#f0a500"
+                 points="@cone.X,@(cy - 2 * cs) @(cone.X - 1.5 * cs),@(cy + cs) @(cone.X + 1.5 * cs),@(cy + cs)"
+                 fill="@cone.Color"
                  style="cursor:pointer;"
                  @onmousedown="(e) => HandleElementMouseDown(e, cref)"
                  @onmousedown:stopPropagation="true"
@@ -62,6 +77,13 @@
     {
         var coach = State.Diagram.Coaches[ki];
         var kref = $"coaches/{ki}";
+        @if (State.SelectedElement == kref)
+        {
+            <circle cx="@coach.X" cy="@(coach.Y * _pitchHeight / 100)"
+                    r="@(coach.Radius + 1.2)"
+                    fill="none" stroke="white" stroke-width="0.4" stroke-dasharray="1,1"
+                    pointer-events="none"/>
+        }
         <g data-element="@kref"
            style="cursor:pointer;"
            @onmousedown="(e) => HandleElementMouseDown(e, kref)"
@@ -69,7 +91,7 @@
            @onclick:stopPropagation="true"
            @onclick="() => HandleElementClick(kref)">
             <circle cx="@coach.X" cy="@(coach.Y * _pitchHeight / 100)"
-                    r="2" fill="#f0a500" stroke="white" stroke-width="0.4"/>
+                    r="@coach.Radius" fill="#f0a500" stroke="white" stroke-width="0.4"/>
             @((MarkupString)$"<text x=\"{coach.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" y=\"{(coach.Y * _pitchHeight / 100).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"white\" font-size=\"1.8\" font-weight=\"bold\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(coach.Label)}</text>")
         </g>
     }
@@ -82,6 +104,13 @@
         {
             var player = team.Players[pi];
             var pref = $"teams/{ti}/players/{pi}";
+            @if (State.SelectedElement == pref)
+            {
+                <circle cx="@player.X" cy="@(player.Y * _pitchHeight / 100)"
+                        r="@(player.Radius + 1.2)"
+                        fill="none" stroke="white" stroke-width="0.4" stroke-dasharray="1,1"
+                        pointer-events="none"/>
+            }
             <g data-element="@pref"
                style="cursor:pointer;"
                @onmousedown="(e) => HandleElementMouseDown(e, pref)"
@@ -89,7 +118,7 @@
                @onclick:stopPropagation="true"
                @onclick="() => HandleElementClick(pref)">
                 <circle cx="@player.X" cy="@(player.Y * _pitchHeight / 100)"
-                        r="2" fill="@team.Color" stroke="white" stroke-width="0.4"/>
+                        r="@player.Radius" fill="@team.Color" stroke="white" stroke-width="0.4"/>
                 @if (!string.IsNullOrEmpty(player.Label))
                 {
                     @((MarkupString)$"<text x=\"{player.X.ToString(System.Globalization.CultureInfo.InvariantCulture)}\" y=\"{(player.Y * _pitchHeight / 100).ToString(System.Globalization.CultureInfo.InvariantCulture)}\" text-anchor=\"middle\" dominant-baseline=\"middle\" fill=\"white\" font-size=\"1.8\" font-weight=\"bold\" pointer-events=\"none\">{System.Net.WebUtility.HtmlEncode(player.Label)}</text>")
@@ -141,6 +170,7 @@
     [Parameter] public EventCallback<(double X, double Y)> OnPlaceGoal { get; set; }
     [Parameter] public EventCallback<(double X, double Y)> OnArrowPoint { get; set; }
     [Parameter] public EventCallback<string> OnElementClick { get; set; }
+    [Parameter] public EventCallback OnDeselect { get; set; }
 
     private readonly string _svgId = $"pitch-{Guid.NewGuid():N}";
     private double _ghostX = -1;
@@ -440,6 +470,7 @@
             case "arrow-run":
             case "arrow-pass":
             case "arrow-dribble": await OnArrowPoint.InvokeAsync((x, y)); break;
+            case null: await OnDeselect.InvokeAsync(); break;
         }
     }
 

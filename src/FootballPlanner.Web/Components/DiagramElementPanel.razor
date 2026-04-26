@@ -1,0 +1,142 @@
+@using FootballPlanner.Web.Models
+
+@if (_type != ElementType.None)
+{
+    <MudDivider Class="my-2" />
+    <MudText Typo="Typo.subtitle2" Class="mb-1">Element</MudText>
+
+    @if (_type == ElementType.Player)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary">Size</MudText>
+        <MudSlider T="double"
+                   Min="1" Max="5" Step="0.5"
+                   Value="@_playerRadius"
+                   ValueChanged="@HandlePlayerResize"
+                   aria-label="Player size" />
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">Team</MudText>
+        @foreach (var team in State.Diagram.Teams)
+        {
+            var isActive = State.Diagram.Teams[_teamIdx].Id == team.Id;
+            <div class="d-flex align-center gap-1 mb-1"
+                 style="cursor:pointer;opacity:@(isActive ? "1" : "0.55")"
+                 @onclick="() => HandleTransferPlayer(team.Id)">
+                <div style="width:12px;height:12px;border-radius:50%;background:@team.Color;border:@(isActive ? "2px solid white" : "1px solid rgba(255,255,255,0.3)")" />
+                <MudText Typo="Typo.caption">@team.Name</MudText>
+            </div>
+        }
+    }
+
+    @if (_type == ElementType.Coach)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary">Size</MudText>
+        <MudSlider T="double"
+                   Min="1" Max="5" Step="0.5"
+                   Value="@_coachRadius"
+                   ValueChanged="@HandleCoachResize"
+                   aria-label="Coach size" />
+    }
+
+    @if (_type == ElementType.Cone)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary">Size</MudText>
+        <MudSlider T="double"
+                   Min="0.5" Max="4" Step="0.5"
+                   Value="@_coneSize"
+                   ValueChanged="@HandleConeResize"
+                   aria-label="Cone size" />
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">Colour</MudText>
+        <div class="d-flex flex-wrap gap-1">
+            @foreach (var color in ConeColors)
+            {
+                var c = color;
+                <div style="width:18px;height:18px;border-radius:3px;background:@c;cursor:pointer;border:@(State.Diagram.Cones[_coneIdx].Color == c ? "2px solid white" : "1px solid rgba(255,255,255,0.3)")"
+                     title="@c"
+                     @onclick="() => HandleConeColor(c)" />
+            }
+        </div>
+    }
+}
+
+@code {
+    [Parameter, EditorRequired] public DiagramEditorState State { get; set; } = null!;
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private enum ElementType { None, Player, Coach, Cone }
+
+    private static readonly string[] ConeColors =
+    [
+        "#f0a500", "#e94560", "#4169E1", "#43a047", "#9c27b0", "#00acc1",
+        "#ffffff", "#ff6f00", "#795548"
+    ];
+
+    private ElementType _type = ElementType.None;
+    private int _teamIdx, _playerIdx, _coachIdx, _coneIdx;
+    private double _playerRadius, _coachRadius, _coneSize;
+
+    protected override void OnParametersSet()
+    {
+        var sel = State.SelectedElement;
+        if (sel == null) { _type = ElementType.None; return; }
+
+        var parts = sel.Split('/');
+        if (parts[0] == "teams" && parts.Length >= 4
+            && int.TryParse(parts[1], out _teamIdx)
+            && int.TryParse(parts[3], out _playerIdx)
+            && _teamIdx < State.Diagram.Teams.Count
+            && _playerIdx < State.Diagram.Teams[_teamIdx].Players.Count)
+        {
+            _type = ElementType.Player;
+            _playerRadius = State.Diagram.Teams[_teamIdx].Players[_playerIdx].Radius;
+        }
+        else if (parts[0] == "coaches" && parts.Length >= 2
+            && int.TryParse(parts[1], out _coachIdx)
+            && _coachIdx < State.Diagram.Coaches.Count)
+        {
+            _type = ElementType.Coach;
+            _coachRadius = State.Diagram.Coaches[_coachIdx].Radius;
+        }
+        else if (parts[0] == "cones" && parts.Length >= 2
+            && int.TryParse(parts[1], out _coneIdx)
+            && _coneIdx < State.Diagram.Cones.Count)
+        {
+            _type = ElementType.Cone;
+            _coneSize = State.Diagram.Cones[_coneIdx].Size;
+        }
+        else
+        {
+            _type = ElementType.None;
+        }
+    }
+
+    private async Task HandlePlayerResize(double value)
+    {
+        State.ResizeElement(State.SelectedElement!, value);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleCoachResize(double value)
+    {
+        State.ResizeElement(State.SelectedElement!, value);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleConeResize(double value)
+    {
+        State.ResizeElement(State.SelectedElement!, value);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleTransferPlayer(string newTeamId)
+    {
+        State.TransferPlayer(State.SelectedElement!, newTeamId);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleConeColor(string color)
+    {
+        State.ChangeConeColor(State.SelectedElement!, color);
+        await OnChanged.InvokeAsync();
+    }
+}

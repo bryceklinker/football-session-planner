@@ -5,6 +5,7 @@
 @inject ILogger<DiagramCanvas> Logger
 
 <svg id="@_svgId"
+     data-testid="diagram-canvas"
      viewBox="0 0 100 @_pitchHeight.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)"
      style="width:100%;display:block;background:#2d5a27;cursor:@_cursor;overflow:visible;user-select:none;"
      @onclick="HandleSvgClick"

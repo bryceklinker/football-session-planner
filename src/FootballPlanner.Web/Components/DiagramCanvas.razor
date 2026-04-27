@@ -148,6 +148,49 @@
               @onmousedown:stopPropagation="true"
               @onclick:stopPropagation="true"
               @onclick="() => HandleElementClick(aref)"/>
+        @if (State.SelectedElement == aref)
+        {
+            // Pre-capture handle refs — Blazor Razor cannot use string interpolation directly
+            // inside event handler attributes without compilation errors.
+            var tailRef  = $"{aref}/tail";
+            var tipRef   = $"{aref}/tip";
+            var curveRef = $"{aref}/curve";
+
+            <!-- Dashed selection outline -->
+            <path d="@BuildArrowPath(arrow)"
+                  stroke="white" stroke-width="0.8" stroke-dasharray="1.5,1.5"
+                  fill="none" opacity="0.4" pointer-events="none"/>
+
+            <!-- Tail handle -->
+            <circle data-element="@tailRef"
+                    cx="@arrow.X1" cy="@(arrow.Y1 * _pitchHeight / 100)"
+                    r="1.8" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="0.3"
+                    style="cursor:move;"
+                    @onmousedown="(e) => HandleElementMouseDown(e, tailRef)"
+                    @onmousedown:stopPropagation="true"
+                    @onclick="() => {}"
+                    @onclick:stopPropagation="true"/>
+
+            <!-- Tip handle -->
+            <circle data-element="@tipRef"
+                    cx="@arrow.X2" cy="@(arrow.Y2 * _pitchHeight / 100)"
+                    r="1.8" fill="white" stroke="rgba(0,0,0,0.6)" stroke-width="0.3"
+                    style="cursor:move;"
+                    @onmousedown="(e) => HandleElementMouseDown(e, tipRef)"
+                    @onmousedown:stopPropagation="true"
+                    @onclick="() => {}"
+                    @onclick:stopPropagation="true"/>
+
+            <!-- Curve handle (yellow — visually distinct from tail/tip) -->
+            <circle data-element="@curveRef"
+                    cx="@arrow.Cx" cy="@(arrow.Cy * _pitchHeight / 100)"
+                    r="1.4" fill="#ffeb3b" stroke="rgba(0,0,0,0.6)" stroke-width="0.3"
+                    style="cursor:move;"
+                    @onmousedown="(e) => HandleElementMouseDown(e, curveRef)"
+                    @onmousedown:stopPropagation="true"
+                    @onclick="() => {}"
+                    @onclick:stopPropagation="true"/>
+        }
     }
 
     <!-- Ghost cursor for active placement tools -->

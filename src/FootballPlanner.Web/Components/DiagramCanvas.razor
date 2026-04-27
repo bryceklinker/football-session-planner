@@ -12,15 +12,17 @@
      @onmousemove="HandleSvgMouseMove">
 
     <defs>
-        <marker id="arr-run-@_svgId" markerWidth="4" markerHeight="3" refX="4" refY="1.5" orient="auto">
-            <polygon points="0 0,4 1.5,0 3" fill="white"/>
-        </marker>
-        <marker id="arr-pass-@_svgId" markerWidth="4" markerHeight="3" refX="4" refY="1.5" orient="auto">
-            <polygon points="0 0,4 1.5,0 3" fill="#90caf9"/>
-        </marker>
-        <marker id="arr-dribble-@_svgId" markerWidth="4" markerHeight="3" refX="4" refY="1.5" orient="auto">
-            <polygon points="0 0,4 1.5,0 3" fill="#ffcc80"/>
-        </marker>
+        @for (var ai = 0; ai < State.Diagram.Arrows.Count; ai++)
+        {
+            var a = State.Diagram.Arrows[ai];
+            var mFill = a.Color ?? ResolvedArrowColor(a.Style);
+            <marker id="arr-@(_svgId)-@ai"
+                    markerWidth="4" markerHeight="3"
+                    refX="0" refY="1.5"
+                    orient="auto">
+                <polygon points="0 0,4 1.5,0 3" fill="@mFill"/>
+            </marker>
+        }
     </defs>
 
     <!-- Pitch markings -->
@@ -132,19 +134,15 @@
     {
         var arrow = State.Diagram.Arrows[ai];
         var aref = $"arrows/{ai}";
-        var (stroke, dasharray, markerId) = arrow.Style switch
-        {
-            ArrowStyle.Pass => ("#90caf9", "2,2", $"arr-pass-{_svgId}"),
-            ArrowStyle.Dribble => ("#ffcc80", "none", $"arr-dribble-{_svgId}"),
-            _ => ("white", "none", $"arr-run-{_svgId}")
-        };
+        var stroke = arrow.Color ?? ResolvedArrowColor(arrow.Style);
+        var dasharray = arrow.Style == ArrowStyle.Pass ? "2,2" : "none";
         <path data-element="@aref"
               d="@BuildArrowPath(arrow)"
               stroke="@stroke"
               stroke-width="@(arrow.Style == ArrowStyle.Pass ? "0.4" : "0.5")"
               stroke-dasharray="@dasharray"
               fill="none"
-              marker-end="url(#@markerId)"
+              marker-end="url(#arr-@(_svgId)-@ai)"
               style="cursor:pointer;"
               @onmousedown="(e) => HandleElementMouseDown(e, aref)"
               @onmousedown:stopPropagation="true"
@@ -423,6 +421,13 @@
         "delete" => "crosshair",
         _ when IsPlacementTool => "crosshair",
         _ => "default"
+    };
+
+    private static string ResolvedArrowColor(ArrowStyle style) => style switch
+    {
+        ArrowStyle.Pass    => "#90caf9",
+        ArrowStyle.Dribble => "#ffcc80",
+        _                  => "white"
     };
 
     // Called when the user presses the mouse button on a draggable element.

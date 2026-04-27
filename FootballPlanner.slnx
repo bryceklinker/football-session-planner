@@ -40,5 +40,6 @@
     <Project Path="tests/FootballPlanner.Component.Tests/FootballPlanner.Component.Tests.csproj" />
     <Project Path="tests/FootballPlanner.Integration.Tests/FootballPlanner.Integration.Tests.csproj" />
     <Project Path="tests/FootballPlanner.Unit.Tests/FootballPlanner.Unit.Tests.csproj" />
+    <Project Path="tests/FootballPlanner.Web.Tests/FootballPlanner.Web.Tests.csproj" />
   </Folder>
 </Solution>

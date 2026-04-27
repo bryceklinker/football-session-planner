@@ -151,4 +151,68 @@ public class DiagramEditorStateTests
         Assert.Equal(before.X2, after.X2, precision: 6);
         Assert.Equal(before.Y2, after.Y2, precision: 6);
     }
+
+    // ── Legend ────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void AddLegend_CreatesLegendAtDefaultPosition()
+    {
+        var state = new DiagramEditorState();
+        state.Initialize(null);
+        state.AddLegend();
+        Assert.NotNull(state.Diagram.Legend);
+        Assert.Equal(5.0, state.Diagram.Legend!.X, precision: 6);
+        Assert.Equal(5.0, state.Diagram.Legend!.Y, precision: 6);
+    }
+
+    [Fact]
+    public void AddLegend_PushesUndo()
+    {
+        var state = new DiagramEditorState();
+        state.Initialize(null);
+        state.AddLegend();
+        state.Undo();
+        Assert.Null(state.Diagram.Legend);
+    }
+
+    [Fact]
+    public void AddLegend_ClearsSelectedElement()
+    {
+        var state = StateWithOneArrow();
+        state.SelectElement("arrows/0");
+        state.AddLegend();
+        Assert.Null(state.SelectedElement);
+    }
+
+    [Fact]
+    public void RemoveLegend_SetsLegendToNull()
+    {
+        var state = new DiagramEditorState();
+        state.Initialize(null);
+        state.AddLegend();
+        state.RemoveLegend();
+        Assert.Null(state.Diagram.Legend);
+    }
+
+    [Fact]
+    public void RemoveLegend_PushesUndo()
+    {
+        var state = new DiagramEditorState();
+        state.Initialize(null);
+        state.AddLegend();
+        state.RemoveLegend();
+        state.Undo();
+        Assert.NotNull(state.Diagram.Legend);
+    }
+
+    [Fact]
+    public void RemoveLegend_WhenLegendSelected_ClearsSelectedElement()
+    {
+        var state = new DiagramEditorState();
+        state.Initialize(null);
+        state.AddLegend();
+        state.SelectElement("legend");
+        state.RemoveLegend();
+        Assert.Null(state.SelectedElement);
+    }
 }

@@ -231,6 +231,20 @@ public class DiagramEditorState
             ActiveTeamId = Diagram.Teams.FirstOrDefault()?.Id;
     }
 
+    public void AddLegend()
+    {
+        PushUndo();
+        Diagram = Diagram with { Legend = new DiagramLegend() };
+        SelectedElement = null;
+    }
+
+    public void RemoveLegend()
+    {
+        PushUndo();
+        Diagram = Diagram with { Legend = null };
+        if (SelectedElement == "legend") SelectedElement = null;
+    }
+
     public void Clear()
     {
         PushUndo();

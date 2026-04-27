@@ -23,7 +23,8 @@ public record DiagramModel(
     List<ConeElement> Cones,
     List<GoalElement> Goals,
     List<ArrowElement> Arrows,
-    string? Notes = null);
+    string? Notes = null,
+    DiagramLegend? Legend = null);
 
 public record DiagramTeam(
     string Id,
@@ -40,4 +41,9 @@ public record ArrowElement(
     ArrowStyle Style,
     double X1, double Y1,
     double X2, double Y2,
-    double Cx, double Cy);
+    double Cx, double Cy,
+    string? Color = null,
+    int? SequenceNumber = null);
+
+// Stores only position — collapsed/expanded is transient UI state, never persisted.
+public record DiagramLegend(double X = 5, double Y = 5);

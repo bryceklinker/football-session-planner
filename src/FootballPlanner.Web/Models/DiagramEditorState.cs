@@ -57,6 +57,30 @@ public class DiagramEditorState
         Diagram = Diagram with { Cones = ReplaceAt(Diagram.Cones, idx, c => c with { Color = color }) };
     }
 
+    public void ChangeArrowStyle(string elementRef, ArrowStyle style)
+    {
+        var parts = elementRef.Split('/');
+        if (parts.Length < 2 || parts[0] != "arrows" || !int.TryParse(parts[1], out var idx)) return;
+        PushUndo();
+        Diagram = Diagram with { Arrows = ReplaceAt(Diagram.Arrows, idx, a => a with { Style = style }) };
+    }
+
+    public void ChangeArrowColor(string elementRef, string? color)
+    {
+        var parts = elementRef.Split('/');
+        if (parts.Length < 2 || parts[0] != "arrows" || !int.TryParse(parts[1], out var idx)) return;
+        PushUndo();
+        Diagram = Diagram with { Arrows = ReplaceAt(Diagram.Arrows, idx, a => a with { Color = color }) };
+    }
+
+    public void ChangeArrowSequenceNumber(string elementRef, int? number)
+    {
+        var parts = elementRef.Split('/');
+        if (parts.Length < 2 || parts[0] != "arrows" || !int.TryParse(parts[1], out var idx)) return;
+        PushUndo();
+        Diagram = Diagram with { Arrows = ReplaceAt(Diagram.Arrows, idx, a => a with { SequenceNumber = number }) };
+    }
+
     public void TransferPlayer(string elementRef, string newTeamId)
     {
         var parts = elementRef.Split('/');

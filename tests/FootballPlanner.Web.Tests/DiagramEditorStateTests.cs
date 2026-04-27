@@ -96,4 +96,59 @@ public class DiagramEditorStateTests
         state.Undo();
         Assert.Null(state.Diagram.Arrows[0].SequenceNumber);
     }
+
+    // ── MoveByDelta arrow handles ─────────────────────────────────────────────
+
+    [Fact]
+    public void MoveByDelta_ArrowTailHandle_MovesStartPointAndControlPoint()
+    {
+        var state = StateWithOneArrow();
+        var before = state.Diagram.Arrows[0];
+        state.MoveByDelta("arrows/0/tail", 5.0, 3.0);
+        var after = state.Diagram.Arrows[0];
+
+        Assert.Equal(before.X1 + 5.0, after.X1, precision: 6);
+        Assert.Equal(before.Y1 + 3.0, after.Y1, precision: 6);
+        // Control point translates by same delta
+        Assert.Equal(before.Cx + 5.0, after.Cx, precision: 6);
+        Assert.Equal(before.Cy + 3.0, after.Cy, precision: 6);
+        // End point unchanged
+        Assert.Equal(before.X2, after.X2, precision: 6);
+        Assert.Equal(before.Y2, after.Y2, precision: 6);
+    }
+
+    [Fact]
+    public void MoveByDelta_ArrowTipHandle_MovesEndPointAndControlPoint()
+    {
+        var state = StateWithOneArrow();
+        var before = state.Diagram.Arrows[0];
+        state.MoveByDelta("arrows/0/tip", 4.0, -2.0);
+        var after = state.Diagram.Arrows[0];
+
+        Assert.Equal(before.X2 + 4.0, after.X2, precision: 6);
+        Assert.Equal(before.Y2 - 2.0, after.Y2, precision: 6);
+        // Control point translates by same delta
+        Assert.Equal(before.Cx + 4.0, after.Cx, precision: 6);
+        Assert.Equal(before.Cy - 2.0, after.Cy, precision: 6);
+        // Start point unchanged
+        Assert.Equal(before.X1, after.X1, precision: 6);
+        Assert.Equal(before.Y1, after.Y1, precision: 6);
+    }
+
+    [Fact]
+    public void MoveByDelta_ArrowCurveHandle_MovesControlPointOnly()
+    {
+        var state = StateWithOneArrow();
+        var before = state.Diagram.Arrows[0];
+        state.MoveByDelta("arrows/0/curve", 2.0, 8.0);
+        var after = state.Diagram.Arrows[0];
+
+        Assert.Equal(before.Cx + 2.0, after.Cx, precision: 6);
+        Assert.Equal(before.Cy + 8.0, after.Cy, precision: 6);
+        // Endpoints unchanged
+        Assert.Equal(before.X1, after.X1, precision: 6);
+        Assert.Equal(before.Y1, after.Y1, precision: 6);
+        Assert.Equal(before.X2, after.X2, precision: 6);
+        Assert.Equal(before.Y2, after.Y2, precision: 6);
+    }
 }

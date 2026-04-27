@@ -355,6 +355,13 @@ public class DiagramEditorState
 
     private static DiagramModel ApplyDelta(DiagramModel diagram, string elementRef, double dx, double dy)
     {
+        // Legend is the only element ref without an index.
+        if (elementRef == "legend" && diagram.Legend != null)
+            return diagram with { Legend = diagram.Legend with {
+                X = ClampPos(diagram.Legend.X + dx),
+                Y = ClampPos(diagram.Legend.Y + dy)
+            }};
+
         var parts = elementRef.Split('/');
         if (parts.Length < 2 || !int.TryParse(parts[1], out var idx)) return diagram;
 
@@ -368,6 +375,22 @@ public class DiagramEditorState
                 c => c with { X = ClampPos(c.X + dx), Y = ClampPos(c.Y + dy) }) },
             "goals"   => diagram with { Goals   = ReplaceAt(diagram.Goals,   idx,
                 g => g with { X = ClampPos(g.X + dx), Y = ClampPos(g.Y + dy) }) },
+            // Arrow sub-element handles — only translate the relevant points.
+            "arrows" when parts.Length == 3 => parts[2] switch
+            {
+                "tail"  => diagram with { Arrows = ReplaceAt(diagram.Arrows, idx, a => a with {
+                    X1 = ClampPos(a.X1 + dx), Y1 = ClampPos(a.Y1 + dy),
+                    Cx = ClampPos(a.Cx + dx), Cy = ClampPos(a.Cy + dy)
+                })},
+                "tip"   => diagram with { Arrows = ReplaceAt(diagram.Arrows, idx, a => a with {
+                    X2 = ClampPos(a.X2 + dx), Y2 = ClampPos(a.Y2 + dy),
+                    Cx = ClampPos(a.Cx + dx), Cy = ClampPos(a.Cy + dy)
+                })},
+                "curve" => diagram with { Arrows = ReplaceAt(diagram.Arrows, idx, a => a with {
+                    Cx = ClampPos(a.Cx + dx), Cy = ClampPos(a.Cy + dy)
+                })},
+                _ => diagram
+            },
             // Move entire arrow — translate all points by the same delta.
             "arrows"  => diagram with { Arrows  = ReplaceAt(diagram.Arrows,  idx,
                 a => a with {

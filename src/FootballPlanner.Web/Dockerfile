@@ -3,6 +3,7 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Restore layer — only re-runs when project files change
+COPY global.json .
 COPY src/FootballPlanner.Web/FootballPlanner.Web.csproj src/FootballPlanner.Web/
 RUN dotnet restore src/FootballPlanner.Web/FootballPlanner.Web.csproj
 

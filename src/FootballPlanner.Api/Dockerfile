@@ -3,6 +3,7 @@ FROM --platform=linux/amd64 mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # Restore layer — only re-runs when project files change
+COPY global.json .
 COPY src/FootballPlanner.Domain/FootballPlanner.Domain.csproj src/FootballPlanner.Domain/
 COPY src/FootballPlanner.Infrastructure/FootballPlanner.Infrastructure.csproj src/FootballPlanner.Infrastructure/
 COPY src/FootballPlanner.Application/FootballPlanner.Application.csproj src/FootballPlanner.Application/

@@ -547,25 +547,37 @@
         if (arrow.Style == ArrowStyle.Dribble)
         {
             const int waves = 4;
+            var ic2 = System.Globalization.CultureInfo.InvariantCulture;
+            string Fmt(double v) => v.ToString("F2", ic2);
+
+            // Bezier point at parameter t: B(t) = (1-t)²·P0 + 2t(1-t)·Pc + t²·P1
+            double Bx(double t) => (1-t)*(1-t)*x1 + 2*t*(1-t)*cx + t*t*x2;
+            double By(double t) => (1-t)*(1-t)*y1 + 2*t*(1-t)*cy + t*t*y2;
+            // Bezier tangent (un-normalized): B'(t) = 2(1-t)(Pc-P0) + 2t(P1-Pc)
+            double Tx(double t) => 2*(1-t)*(cx-x1) + 2*t*(x2-cx);
+            double Ty(double t) => 2*(1-t)*(cy-y1) + 2*t*(y2-cy);
+
             var sb = new System.Text.StringBuilder();
-            sb.Append($"M {x1.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {y1.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}");
+            sb.Append($"M {Fmt(Bx(0))} {Fmt(By(0))}");
+
             for (var i = 0; i < waves; i++)
             {
-                var t1 = (i + 0.5) / waves;
-                var t2 = (i + 1.0) / waves;
-                var mx1 = x1 + (x2 - x1) * t1;
-                var my1 = y1 + (y2 - y1) * t1;
-                var mx2 = x1 + (x2 - x1) * t2;
-                var my2 = y1 + (y2 - y1) * t2;
-                var dx = x2 - x1;
-                var dy = y2 - y1;
-                var len = Math.Sqrt(dx * dx + dy * dy);
-                var amp = (i % 2 == 0 ? 1.0 : -1.0) * 1.5;
-                var cpx = (mx1 + mx2) / 2 + (len > 0 ? -dy / len * amp : 0);
-                var cpy = (my1 + my2) / 2 + (len > 0 ? dx / len * amp : 0);
-                sb.Append($" Q {cpx.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {cpy.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {mx2.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)} {my2.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}");
-            }
+                double tm = (i + 0.5) / waves; // midpoint of this wave segment
+                double te = (i + 1.0) / waves; // end of this wave segment
 
+                double tangX = Tx(tm);
+                double tangY = Ty(tm);
+                double tlen = Math.Sqrt(tangX * tangX + tangY * tangY);
+
+                // Bezier midpoint + perpendicular offset to create the wave bulge
+                double pmx = Bx(tm);
+                double pmy = By(tm);
+                double amp = (i % 2 == 0 ? 1.5 : -1.5);
+                double cpx = pmx + (tlen > 0 ? -tangY / tlen * amp : 0);
+                double cpy = pmy + (tlen > 0 ?  tangX / tlen * amp : 0);
+
+                sb.Append($" Q {Fmt(cpx)} {Fmt(cpy)} {Fmt(Bx(te))} {Fmt(By(te))}");
+            }
             return sb.ToString();
         }
 

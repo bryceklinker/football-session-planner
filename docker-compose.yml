@@ -51,6 +51,12 @@ services:
       DOTNET_ENVIRONMENT: "Development"
       FUNCTIONS_WORKER_RUNTIME: "dotnet-isolated"
       AzureWebJobsStorage: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tiko1Y5vSRu4s6C8eKg==;BlobEndpoint=http://azurite:10000/devstoreaccount1;QueueEndpoint=http://azurite:10001/devstoreaccount1;TableEndpoint=http://azurite:10002/devstoreaccount1;"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:80/admin/host/status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -69,7 +75,8 @@ services:
     ports:
       - "4280:4280"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   sqldata:

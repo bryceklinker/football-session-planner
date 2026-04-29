@@ -91,4 +91,28 @@ public class DiagramJourney(IPage page)
     {
         return await page.GetByTestId("diagram-canvas").ScreenshotAsync();
     }
+
+    public async Task SelectElementAsync(string dataElement)
+    {
+        await page.Locator($"[data-element='{dataElement}']").ClickAsync();
+    }
+
+    public async Task ToggleLegendAsync()
+    {
+        var btn = page.GetByRole(AriaRole.Button, new() { Name = "Add legend" });
+        if (await btn.IsVisibleAsync())
+            await btn.ClickAsync();
+        else
+            await page.GetByRole(AriaRole.Button, new() { Name = "Remove legend" }).ClickAsync();
+    }
+
+    public async Task<bool> LegendIsVisibleAsync()
+    {
+        return await page.Locator("[data-element='legend']").IsVisibleAsync();
+    }
+
+    public async Task<bool> HandleIsVisibleAsync(int arrowIndex, string handle)
+    {
+        return await page.Locator($"[data-element='arrows/{arrowIndex}/{handle}']").IsVisibleAsync();
+    }
 }

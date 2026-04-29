@@ -1,9 +1,15 @@
 # Build stage
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY . .
+
+# Restore layer — only re-runs when project files change
+COPY src/FootballPlanner.Web/FootballPlanner.Web.csproj src/FootballPlanner.Web/
+RUN dotnet restore src/FootballPlanner.Web/FootballPlanner.Web.csproj
+
+# Build layer — only re-runs when source changes
+COPY src/FootballPlanner.Web/ src/FootballPlanner.Web/
 RUN dotnet publish src/FootballPlanner.Web/FootballPlanner.Web.csproj \
-    -c Release -o /app/publish
+    -c Release --no-restore -o /app/publish
 
 # Runtime stage
 FROM node:24-slim AS runtime

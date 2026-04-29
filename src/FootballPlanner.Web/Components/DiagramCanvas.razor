@@ -193,6 +193,71 @@
         }
     }
 
+    <!-- Legend -->
+    @if (State.Diagram.Legend != null)
+    {
+        var leg = State.Diagram.Legend;
+        var ic3 = System.Globalization.CultureInfo.InvariantCulture;
+        string LF(double v) => v.ToString("F2", ic3);
+
+        var legendEntries = State.Diagram.Arrows
+            .Where(a => a.SequenceNumber.HasValue)
+            .Select(a => (Color: a.Color ?? ResolvedArrowColor(a.Style), Number: a.SequenceNumber!.Value))
+            .Distinct()
+            .OrderBy(e => e.Number)
+            .ToList();
+
+        const double legendWidth = 22.0;
+        const double headerH = 5.0;
+        const double rowH = 4.5;
+        const double pad = 1.5;
+        var contentH = _legendCollapsed ? 0.0 : legendEntries.Count * rowH;
+        var legendH = headerH + contentH + pad;
+        var lx = leg.X;
+        var ly = leg.Y * _pitchHeight / 100;
+        var legendRef = "legend";
+        var isLegendSelected = State.SelectedElement == legendRef;
+
+        @if (isLegendSelected)
+        {
+            <rect x="@LF(lx - 0.5)" y="@LF(ly - 0.5)"
+                  width="@LF(legendWidth + 1)" height="@LF(legendH + 1)"
+                  fill="none" stroke="white" stroke-width="0.4" stroke-dasharray="1,1"
+                  pointer-events="none"/>
+        }
+
+        <rect data-element="@legendRef"
+              x="@LF(lx)" y="@LF(ly)"
+              width="@LF(legendWidth)" height="@LF(legendH)"
+              rx="1.5" ry="1.5"
+              fill="rgba(0,0,0,0.65)" stroke="rgba(255,255,255,0.3)" stroke-width="0.4"
+              style="cursor:pointer;"
+              @onmousedown="(e) => HandleElementMouseDown(e, legendRef)"
+              @onmousedown:stopPropagation="true"
+              @onclick:stopPropagation="true"
+              @onclick="() => HandleElementClick(legendRef)"/>
+
+        @((MarkupString)$"<text x=\"{LF(lx + pad)}\" y=\"{LF(ly + headerH / 2)}\" fill=\"white\" font-size=\"2.5\" font-weight=\"bold\" dominant-baseline=\"middle\" pointer-events=\"none\">Legend</text>")
+
+        <g style="cursor:pointer;"
+           @onclick="() => _legendCollapsed = !_legendCollapsed"
+           @onclick:stopPropagation="true">
+            @((MarkupString)$"<text x=\"{LF(lx + legendWidth - pad - 1.5)}\" y=\"{LF(ly + headerH / 2)}\" fill=\"white\" font-size=\"2.8\" dominant-baseline=\"middle\" text-anchor=\"middle\">{(_legendCollapsed ? "&#x25B6;" : "&#x25BC;")}</text>")
+        </g>
+
+        @if (!_legendCollapsed)
+        {
+            @for (var ri = 0; ri < legendEntries.Count; ri++)
+            {
+                var entry = legendEntries[ri];
+                var ey = ly + headerH + ri * rowH + rowH / 2;
+                <circle cx="@LF(lx + pad + 1.5)" cy="@LF(ey)"
+                        r="1.2" fill="@entry.Color" pointer-events="none"/>
+                @((MarkupString)$"<text x=\"{LF(lx + pad + 4.5)}\" y=\"{LF(ey)}\" fill=\"white\" font-size=\"2.5\" dominant-baseline=\"middle\" pointer-events=\"none\">{entry.Number}</text>")
+            }
+        }
+    }
+
     <!-- Ghost cursor for active placement tools -->
     @if (_ghostX >= 0 && IsPlacementTool)
     {
@@ -219,6 +284,7 @@
 
     // True while a JS-driven drag is in progress (used to roll back undo on dispose).
     private bool _isDragging;
+    private bool _legendCollapsed;
 
     // DotNetObjectReference passed to JS so it can invoke OnDragEnd.
     private DotNetObjectReference<DiagramCanvas>? _dotNetRef;

@@ -26,7 +26,7 @@ down:
 	docker compose down
 
 wait:
-	curl --retry 30 --retry-delay 5 --retry-all-errors -s http://localhost:7071/admin/host/status > /dev/null
+	curl --retry 30 --retry-delay 5 --retry-all-errors -s http://localhost:7071/api/health > /dev/null
 	curl --retry 20 --retry-delay 5 --retry-all-errors -s http://localhost:4280/ > /dev/null
 
 logs:

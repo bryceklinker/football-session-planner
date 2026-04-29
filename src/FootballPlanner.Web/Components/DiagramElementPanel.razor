@@ -57,13 +57,72 @@
             }
         </div>
     }
+
+    @if (_type == ElementType.Arrow)
+    {
+        <MudText Typo="Typo.caption" Color="Color.Secondary">Style</MudText>
+        <div class="d-flex gap-1 mb-1">
+            @foreach (var style in new[] { ArrowStyle.Run, ArrowStyle.Pass, ArrowStyle.Dribble })
+            {
+                var s = style;
+                var isActive = State.Diagram.Arrows[_arrowIdx].Style == s;
+                <MudButton Size="Size.Small"
+                           Variant="@(isActive ? Variant.Filled : Variant.Outlined)"
+                           OnClick="() => HandleArrowStyle(s)">
+                    @s.ToString()
+                </MudButton>
+            }
+        </div>
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">Colour</MudText>
+        <div class="d-flex align-center gap-1 mb-1">
+            <input type="color"
+                   value="@(_arrowColor ?? "#ffffff")"
+                   @onchange="@(async e => await HandleArrowColor(e.Value?.ToString()))"
+                   style="width:32px;height:24px;border:none;background:none;cursor:pointer;padding:0;" />
+            @if (_arrowColor != null)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Clear" Size="Size.Small"
+                               Title="Reset to default colour"
+                               OnClick="() => HandleArrowColor(null)" />
+            }
+        </div>
+
+        @foreach (var ec in State.Diagram.Arrows.Where((a, i) => i != _arrowIdx && a.Color != null).Select(a => a.Color!).Distinct())
+        {
+            var c = ec;
+            <div style="width:18px;height:18px;border-radius:3px;background:@c;cursor:pointer;border:@(_arrowColor == c ? "2px solid white" : "1px solid rgba(255,255,255,0.3)")"
+                 title="@c"
+                 @onclick="() => HandleArrowColor(c)" />
+        }
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">Sequence No.</MudText>
+        <MudNumericField T="int?"
+                         Value="@_arrowSequence"
+                         ValueChanged="HandleArrowSequence"
+                         Min="1" Max="99"
+                         Dense="true" Margin="Margin.Dense"
+                         Placeholder="–"
+                         Style="width:80px;" />
+    }
+
+    @if (_type == ElementType.Legend)
+    {
+        <MudButton Size="Size.Small"
+                   Color="Color.Warning"
+                   Variant="Variant.Outlined"
+                   OnClick="HandleRemoveLegend"
+                   Class="mt-1">
+            Remove Legend
+        </MudButton>
+    }
 }
 
 @code {
     [Parameter, EditorRequired] public DiagramEditorState State { get; set; } = null!;
     [Parameter] public EventCallback OnChanged { get; set; }
 
-    private enum ElementType { None, Player, Coach, Cone }
+    private enum ElementType { None, Player, Coach, Cone, Arrow, Legend }
 
     private static readonly string[] ConeColors =
     [
@@ -72,8 +131,10 @@
     ];
 
     private ElementType _type = ElementType.None;
-    private int _teamIdx, _playerIdx, _coachIdx, _coneIdx;
+    private int _teamIdx, _playerIdx, _coachIdx, _coneIdx, _arrowIdx;
     private double _playerRadius, _coachRadius, _coneSize;
+    private string? _arrowColor;
+    private int? _arrowSequence;
 
     protected override void OnParametersSet()
     {
@@ -103,6 +164,18 @@
         {
             _type = ElementType.Cone;
             _coneSize = State.Diagram.Cones[_coneIdx].Size;
+        }
+        else if (parts[0] == "arrows" && parts.Length == 2
+            && int.TryParse(parts[1], out _arrowIdx)
+            && _arrowIdx < State.Diagram.Arrows.Count)
+        {
+            _type = ElementType.Arrow;
+            _arrowColor = State.Diagram.Arrows[_arrowIdx].Color;
+            _arrowSequence = State.Diagram.Arrows[_arrowIdx].SequenceNumber;
+        }
+        else if (sel == "legend" && State.Diagram.Legend != null)
+        {
+            _type = ElementType.Legend;
         }
         else
         {
@@ -137,6 +210,32 @@
     private async Task HandleConeColor(string color)
     {
         State.ChangeConeColor(State.SelectedElement!, color);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleArrowStyle(ArrowStyle style)
+    {
+        State.ChangeArrowStyle(State.SelectedElement!, style);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleArrowColor(string? color)
+    {
+        _arrowColor = color;
+        State.ChangeArrowColor(State.SelectedElement!, color);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleArrowSequence(int? number)
+    {
+        _arrowSequence = number;
+        State.ChangeArrowSequenceNumber(State.SelectedElement!, number);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleRemoveLegend()
+    {
+        State.RemoveLegend();
         await OnChanged.InvokeAsync();
     }
 }

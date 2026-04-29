@@ -89,6 +89,14 @@
                    Color="@(State.ActiveTool == "delete" ? Color.Primary : Color.Default)"
                    OnClick="@(() => HandleToolClick("delete"))" />
 
+    <MudDivider />
+
+    <MudIconButton aria-label="@(State.Diagram.Legend == null ? "Add legend" : "Remove legend")"
+                   Icon="@Icons.Material.Filled.Toc"
+                   Size="Size.Small"
+                   Color="@(State.Diagram.Legend != null ? Color.Primary : Color.Default)"
+                   OnClick="HandleLegendToggle" />
+
 </div>
 
 @code {
@@ -117,6 +125,15 @@
     private async Task HandleCustomHeightChanged(double height)
     {
         State.SetPitchFormat(PitchFormat.Custom, State.Diagram.CustomWidth ?? 100.0, height);
+        await OnChanged.InvokeAsync();
+    }
+
+    private async Task HandleLegendToggle()
+    {
+        if (State.Diagram.Legend == null)
+            State.AddLegend();
+        else
+            State.RemoveLegend();
         await OnChanged.InvokeAsync();
     }
 }

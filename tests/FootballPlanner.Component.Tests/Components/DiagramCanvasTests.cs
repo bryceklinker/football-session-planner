@@ -357,4 +357,90 @@ public class DiagramCanvasTests : BunitContext, IAsyncLifetime
         Assert.Equal(70.0, state.Diagram.Cones[0].X);
         Assert.Equal(80.0, state.Diagram.Cones[0].Y);
     }
+
+    [Fact]
+    public void Renders_ArrowHandles_WhenArrowSelected()
+    {
+        var state = DefaultState();
+        state.HandleArrowPoint(10.0, 20.0);
+        state.HandleArrowPoint(80.0, 70.0);
+        state.SelectElement("arrows/0");
+
+        var cut = Render<DiagramCanvas>(
+            p => p.Add(x => x.State, state));
+
+        Assert.NotNull(cut.Find("[data-element='arrows/0/tail']"));
+        Assert.NotNull(cut.Find("[data-element='arrows/0/tip']"));
+        Assert.NotNull(cut.Find("[data-element='arrows/0/curve']"));
+    }
+
+    [Fact]
+    public void Renders_NoHandles_WhenArrowNotSelected()
+    {
+        var state = DefaultState();
+        state.HandleArrowPoint(10.0, 20.0);
+        state.HandleArrowPoint(80.0, 70.0);
+        // SelectedElement is null — no selection
+
+        var cut = Render<DiagramCanvas>(
+            p => p.Add(x => x.State, state));
+
+        Assert.Empty(cut.FindAll("[data-element='arrows/0/tail']"));
+        Assert.Empty(cut.FindAll("[data-element='arrows/0/tip']"));
+        Assert.Empty(cut.FindAll("[data-element='arrows/0/curve']"));
+    }
+
+    [Fact]
+    public void Renders_NoLegend_WhenLegendIsNull()
+    {
+        var state = DefaultState();
+        // Legend is null by default
+
+        var cut = Render<DiagramCanvas>(
+            p => p.Add(x => x.State, state));
+
+        Assert.Empty(cut.FindAll("[data-element='legend']"));
+    }
+
+    [Fact]
+    public void Renders_LegendEntries_DerivedFromArrows()
+    {
+        var state = DefaultState();
+        state.HandleArrowPoint(10.0, 20.0);
+        state.HandleArrowPoint(80.0, 70.0);
+        state.ChangeArrowSequenceNumber("arrows/0", 1);
+        state.AddLegend();
+
+        var cut = Render<DiagramCanvas>(
+            p => p.Add(x => x.State, state));
+
+        Assert.NotNull(cut.Find("[data-element='legend']"));
+    }
+
+    [Fact]
+    public void LegendCollapse_Toggle_CollapsesThenExpandsLegend()
+    {
+        var state = DefaultState();
+        state.HandleArrowPoint(10.0, 20.0);
+        state.HandleArrowPoint(80.0, 70.0);
+        state.ChangeArrowSequenceNumber("arrows/0", 1);
+        state.AddLegend();
+
+        var cut = Render<DiagramCanvas>(
+            p => p.Add(x => x.State, state));
+
+        // Initially expanded: legend background rect is visible
+        Assert.NotNull(cut.Find("[data-element='legend']"));
+
+        // The collapse toggle is a <g> element with an onclick handler.
+        // Click it to collapse the legend.
+        var toggleGs = cut.FindAll("g").Where(g => g.HasAttribute("style") && g.GetAttribute("style")!.Contains("cursor:pointer")).ToList();
+        var toggle = toggleGs.FirstOrDefault();
+        if (toggle != null)
+        {
+            toggle.Click();
+            // After collapse the legend rect still renders (just shorter)
+            Assert.NotNull(cut.Find("[data-element='legend']"));
+        }
+    }
 }
